@@ -1,12 +1,21 @@
 <%! import re %>
 
-<%def name="record_summary(cases)">
+<%def name="record_summary(cases, remainingcases, petitions, get_unsealable_until_date, caseExist, petionDetails)">
+    <ol>
     % for case in cases:
-
+        <hr>
+        <li>
         <div style="padding-bottom: 0">
             <p>
                 <p>
-                    <b> Case: ${ case.docket_number } </b>
+                    <b> Case: ${ case.docket_number }</b>
+                    %if (caseExist(case, remainingcases)):
+                        (eligible for sealing or expungement)
+                    %endif
+                    %if len(petionDetails(case, petitions)) > 0:
+
+                    (can be cleared because: ${ petionDetails(case, petitions) })
+                    %endif
                 </p>
                 <p>
                     County: ${ getattr(case, 'county', 'COUNTY UNKNOWN') }
@@ -29,10 +38,14 @@
                     in the amount of $${ (getattr(case, 'total_fines', 0) or 0) - (getattr(case, 'fines_paid', 0) or 0)}. 
                 </p>
             % endif
+            % if get_unsealable_until_date(case) is not None:
+                <p> It looks like this case will be eligible for sealing in the future, if you have no further convictions. ${ get_unsealable_until_date(case) }</p>
+            % endif
         </div>
- 
+        </li>
 
     % endfor
+    </ol>
 </%def>
 
 
@@ -41,6 +54,9 @@
     ## only include an action like "arrests you can expunge" if there are some arrests in that category.
     % for petition_type in petitions:
         % if len(petition_type.value) > 0: 
+            <ol>
+            <li>
+            <hr>
             <div style="padding: 1rem">
                 <h3>
                     ${ petition_type.name }
@@ -79,6 +95,8 @@
                         </p>
                     % endif
                 % endfor
+            </li>
+            </ol>
             </div>
         % endif
     % endfor
@@ -102,7 +120,10 @@
     <p> These cases appear not to be eligible for sealing or expungement. </p>
     <p> For these cases, you may need to pay outstanding fines, wait for time to pass since the arrest, or even seek a pardon from the Governor.</p>
     <p> It would be a good idea to reach out to a lawyer to help you figure out how you might be able to clear these cases. </p>
+    <ol>
     % for case in remaining_record.cases:
+        <hr>
+        <li>
         <div style="padding-left: 1rem;">
             <p>
                 <p>
@@ -128,8 +149,9 @@
                 <p> It looks like this case will be eligible for sealing in the future, if you have no further convictions. ${ get_unsealable_until_date(case) }</p>
             % endif
         </div>
-            
+        </li>    
     % endfor
+    </ol>
 </%def>
 
 <%def name='referral_information(counties)'>

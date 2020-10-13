@@ -25,9 +25,7 @@ ${defs.write_search_details()}
     </p>
 % endif
 <h2> Summary of your record </h2>
-    ${defs.record_summary(analysis.record.cases)}
-<h2> Our automated analysis of what you can clear from your record. </h2>
-    ${defs.petition_details(analysis.decisions)}
+        ${defs.record_summary(analysis.record.cases,analysis.remaining_record.cases,  analysis.decisions, get_unsealable_until_date, caseExist, petionDetails)}
 % if len(analysis.remaining_record.cases) == 0:
 
     <h2> All cases cleared! </h2>
