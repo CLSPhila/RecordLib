@@ -9,8 +9,8 @@
             <p>
                 <p>
                     <b> Case: ${ case.docket_number }</b>
-                    %if (caseExist(case, remainingcases)):
-                        (eligible for sealing or expungement)
+                    %if (caseExist(case, cases)):
+                        (not eligible for completely sealing or expunging)
                     %endif
                     %if len(petionDetails(case, petitions)) > 0:
 
