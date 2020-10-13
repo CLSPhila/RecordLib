@@ -981,3 +981,29 @@ def petition_sealing_for_single_charge(charge: Charge):
     ]
     charge_decision.value = all(charge_decision.reasoning)
     return charge_decision
+
+
+def cannot_autoseal_m1_or_f(charge: Charge):
+    """
+    Autosealing is never possible for M1 or F convictions.
+
+    This method assumes the charge is a conviction.
+    
+    """
+    dec = Decision(name="Is the conviction less serious than an M1 or F?",)
+
+    if charge.grade is None:
+        dec.value = False
+        dec.reasoning = (
+            "Grade information is missing, so we cannot determine eligibility."
+        )
+        return dec
+
+    val = not Charge.grade_GTE(charge.grade, "M1")
+    dec.value = val
+    less_or_more = "less" if val else "more"
+    dec.reasoning = (
+        f"The grade {charge.grade} is {less_or_more} serious than an M1 or F."
+    )
+
+    return dec
