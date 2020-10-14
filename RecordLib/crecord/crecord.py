@@ -13,6 +13,34 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 from .person import Person
 from .case import Case
+from .common import Charge
+
+
+def years_between_convictions(crecord: CRecord, case: Case, charge: Charge) -> int:
+    """
+    How many years elapsed between the conviction `charge` in `case`, and the next conviction?
+    """
+    convictions_only = []
+    for case in crecord.cases:
+        append = False
+        for charge2 in case.charges:
+            if charge2.is_conviction():
+                append = True
+                break
+        if append:
+            convictions_only.append(case)
+
+    convictions_sorted = sorted(convictions_only, key=Case.order_cases_by_last_action)
+    start_date = charge.disposition_date or case.disposition_date
+    subsequent_convictions = [
+        c for c in convictions_sorted if case.last_action() > start_date
+    ]
+    if len(subsequent_convictions) == 0:
+        # There are no convictions after the one we're interested in, so the answer is the
+        # years between the start_date and now.
+        return relativedelta(date.today(), start_date).years
+    else:
+        return relativedelta(subsequent_convictions[0].last_action(), start_date).years
 
 
 def years_since_last_arrested_or_prosecuted(crecord: CRecord) -> int:
@@ -90,6 +118,7 @@ class CRecord:
     years_since_last_arrested_or_prosecuted = years_since_last_arrested_or_prosecuted
 
     years_since_final_release = years_since_final_release
+    years_between_convictions = years_between_convictions
 
     def __init__(self, person: Person = None, cases: List[Case] = None):
         self.person = person
