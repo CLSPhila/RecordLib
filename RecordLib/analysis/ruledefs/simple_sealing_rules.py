@@ -260,7 +260,7 @@ def record_contains_convictions_excluded_from_sealing(crecord: CRecord) -> Decis
     reasoning.append(has_sexual_intercourse_w_animal(crecord))
     reasoning.append(has_failure_to_register(crecord))
     reasoning.append(has_abuse_of_corpse(crecord))
-    reasoning.append(has_paramilitary_training)
+    reasoning.append(has_paramilitary_training(crecord))
 
     decision.reasoning = reasoning
     decision.value = any(decision.reasoning)
@@ -274,8 +274,8 @@ def all_fines_and_costs_paid(crecord: CRecord) -> Decision:
     """
     cases = crecord.cases
     decision = Decision(name=f"Are all fines and costs paid for these cases?",)
-    decision.reasoning = reasoning = [fines_and_costs_paid(case) for case in cases]
-    decision.value = bool(reasoning)
+    decision.reasoning = [fines_and_costs_paid(case) for case in cases]
+    decision.value = all(decision.reasoning)
     return decision
 
 
@@ -932,7 +932,7 @@ def no_failure_to_register(
                 for charge in case.charges
                 if (
                     (case.years_passed_disposition() < within_years)
-                    and no_failure_to_register(charge)
+                    and not no_failure_to_register(charge)
                 )
             ],
         )
@@ -1039,7 +1039,7 @@ def has_paramilitary_training(crecord):
     True valued Decision if record contains convictions for paramilitary
     training.
     """
-    dec = has_paramilitary_training(crecord, 1, float("inf"))
+    dec = no_paramilitary_training(crecord, 1, float("inf"))
     dec.name = "Does the record contain any convictions for paramilitary training?"
     dec.value = not dec.value
     return dec
