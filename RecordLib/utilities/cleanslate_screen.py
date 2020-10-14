@@ -182,6 +182,7 @@ def by_name(
 
     analysis = (
         Analysis(crecord)
+        .rule(rd.filter_traffic_cases)
         .rule(rd.expunge_deceased)
         .rule(rd.expunge_over_70)
         .rule(rd.expunge_nonconvictions)

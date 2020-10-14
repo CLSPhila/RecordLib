@@ -12,7 +12,7 @@ from .petition_rules import (
     expunge_summary_convictions,
     expunge_deceased,
     expunge_over_70,
-    seal_convictions
+    seal_convictions,
 )
 
 from .simple_expungement_rules import (
@@ -23,3 +23,5 @@ from .simple_expungement_rules import (
 
 
 from .simple_sealing_rules import *
+
+from .filter_rules import filter_traffic_cases

@@ -47,12 +47,12 @@ def expunge_over_70(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]:
         for e in exps:
             e.expungement_type = Expungement.ExpungementTypes.FULL_EXPUNGEMENT
         conclusion.value = exps
-        remaining_recordord = CRecord(person=copy.deepcopy(crecord.person), cases=[])
+        remaining_record = CRecord(person=copy.deepcopy(crecord.person), cases=[])
     else:
         conclusion.value = []
-        remaining_recordord = crecord
+        remaining_record = crecord
 
-    return remaining_recordord, conclusion
+    return remaining_record, conclusion
 
 
 def expunge_deceased(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]:

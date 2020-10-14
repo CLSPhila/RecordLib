@@ -68,3 +68,11 @@ class RecordEligibilityDecision(Decision):
     """
 
     pass
+
+
+class FilterDecision(Decision):
+    """
+    A Decision where where the 'value' is cases that have been filtered out of a CRecord because they meet some criteria.
+    """
+
+    pass

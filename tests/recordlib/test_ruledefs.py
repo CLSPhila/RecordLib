@@ -6,6 +6,7 @@ from RecordLib.analysis.ruledefs.simple_sealing_rules import (
     no_danger_to_person_offense,
     cannot_autoseal_m1_or_f,
 )
+from RecordLib.analysis.ruledefs.filter_rules import is_traffic_case
 from RecordLib.crecord import Sentence, SentenceLength
 from RecordLib.crecord import Case
 from RecordLib.utilities.serializers import to_serializable
@@ -125,3 +126,13 @@ def test_cannot_autoseal_m1_or_f(example_charge, grade, value, less_or_more):
     result = cannot_autoseal_m1_or_f(example_charge)
     assert result.value == value
     assert less_or_more in result.reasoning
+
+
+def test_traffic_filter(example_case):
+    example_case.docket_number = "CP-1234"
+    dec = is_traffic_case(example_case)
+    assert bool(dec) == False
+
+    example_case.docket_number = "MD-TR-1234"
+    dec = is_traffic_case(example_case)
+    assert bool(dec) == True
