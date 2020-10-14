@@ -14,7 +14,7 @@ from RecordLib.crecord import Person
 from RecordLib.crecord import Case
 from RecordLib.analysis import Analysis
 from RecordLib.petitions import Expungement, Sealing
-from RecordLib.analysis import Decision
+from RecordLib.analysis import Decision, RecordEligibilityDecision, PetitionDecision
 from RecordLib.crecord import CRecord
 from RecordLib.crecord import Attorney
 from RecordLib.sourcerecords import Docket, Summary, SourceRecord
@@ -70,11 +70,18 @@ def ts_sourcerecord(sr):
     }
 
 
+@to_serializable.register(dict)
+def ts_dict(dct):
+    return {k: to_serializable(val) for k, val in dct.items()}
+
+
 @to_serializable.register(Case)
 @to_serializable.register(Charge)
 @to_serializable.register(Person)
 @to_serializable.register(Sentence)
 @to_serializable.register(Decision)
+@to_serializable.register(RecordEligibilityDecision)
+@to_serializable.register(PetitionDecision)
 @to_serializable.register(Analysis)
 @to_serializable.register(Sealing)
 @to_serializable.register(Expungement)

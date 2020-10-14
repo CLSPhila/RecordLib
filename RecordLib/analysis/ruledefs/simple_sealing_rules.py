@@ -17,7 +17,7 @@ The rules in this module all relate to petition-based sealing..
 
 from __future__ import annotations
 from RecordLib.crecord import CRecord, Charge
-from typing import Tuple, Union, List
+from typing import Tuple, Union, List, Optional
 import copy
 import json
 import re
@@ -30,9 +30,9 @@ from datetime import date
 
 def no_danger_to_person_offense(
     item: Union[CRecord, Charge],
-    within_years: int,
-    penalty_limit: int,
-    conviction_limit: int,
+    within_years: Optional[int] = None,
+    penalty_limit: Optional[int] = None,
+    conviction_limit: Optional[int] = None,
 ) -> Decision:
     """
     Individual is not eligible for sealing if they have been convicted within 20 years of an offense
@@ -112,6 +112,23 @@ def no_danger_to_person_offense(
     return decision
 
 
+def ten_years_between_convictions(charge, case, crecord, years=10) -> Decision:
+    """
+    True-valued decision if at least 10 years have passed since the disposition of `charge`, and 
+    the next conviction.
+    """
+    decision = Decision(
+        name=f"Has it been 10 years since a conviction for {charge.offense}?"
+    )
+    if not charge.is_conviction():
+        decision.value = True
+        decision.reasoning = "This charge was not a conviction."
+        return decision
+    years_between_convictions = crecord.years_between_convictions(case, charge)
+    decision.value = years_between_convictions >= years
+    decision.reasoning = f"{years_between_convictions} years elapsed after the conviction for {charge.offense} in {case.docket_number}"
+
+
 def ten_years_since_last_conviction_for_m_or_f(crecord: CRecord) -> Decision:
     """
     Person is not eligible for sealing unless they have been "free from conviction
@@ -168,6 +185,97 @@ def ten_years_since_last_conviction_for_m_or_f(crecord: CRecord) -> Decision:
 
     if decision.value is False:
         decision.reasoning += f" Person may be eligible for sealing in {math.ceil(10 - years_since_last_conviction)} years, if there are no further convictions. "
+    return decision
+
+
+def no_cruelty_to_animals(charge: Charge) -> Decision:
+    """
+    True-valued decision if the charge is not a conviction for cruelty to animals.
+    """
+    decision = Decision(name="Is the charge not a conviction for cruelty to animals?")
+    decision.value = (
+        not charge.is_conviction()
+    ) and charge.get_statute_section() != "5533"
+    decision.reasoning = f"The charge has disposition of {charge.disposition}, for offense of {charge.statute}"
+    return decision
+
+
+def charge_is_not_excluded_from_sealing(charge: Charge) -> Decision:
+    """
+    Convictions for certain charges can't be sealed, although they don't disqualify the whole record.
+    
+    Returns:
+        True-valued decision if this charge _is not_ excluded.
+    """
+    decision = Decision(
+        name=f"Is the charge for {charge.offense} excluded from sealing?"
+    )
+    decision.reasoning = []
+    decision.reasoning.append(no_danger_to_person_offense(charge))
+    decision.reasoning.append(no_offense_against_family(charge))
+    decision.reasoning.append(no_firearms_offense(charge))
+    decision.reasoning.append(no_sexual_offense(charge))
+    decision.reasoning.append(no_cruelty_to_animals(charge))
+    decision.reasoning.append(no_corruption_of_minors_offense(charge))
+
+    decision.value = all(decision.reasoning)
+    return decision
+
+
+def record_contains_no_convictions_excluded_from_sealing(crecord: CRecord) -> Decision:
+    """
+    True-valued decision if this record does NOT contain any convictions that exclude
+    the whole record from sealing.
+    
+    This is the inverse of `record_contains_convictions_excluded_from_sealing`
+    """
+    dec = record_contains_convictions_excluded_from_sealing(crecord)
+    dec.name = (
+        "Is this record free of any convictions that exclude if from autosealing?"
+    )
+    dec.value = not dec.value
+    return dec
+
+
+def record_contains_convictions_excluded_from_sealing(crecord: CRecord) -> Decision:
+    """
+    Convictions for certain offenses exclude the entire record from eligibility for sealing.
+    
+    If decision.value is TRUE, that means the record _does_ contain
+    at least one conviction for excluded offenses.
+ 
+    """
+    decision = Decision(
+        name="Does this record include any convictions for an offense that would bar the whole record from automatic sealing?"
+    )
+    reasoning = []
+    reasoning.append(any_felony_convictions_n_years(crecord, float("inf")))
+    reasoning.append(
+        more_than_x_convictions_y_grade_z_years(crecord, 2, "M1", float("inf"))
+    )
+    reasoning.append(
+        more_than_x_convictions_y_grade_z_years(crecord, 4, "M", float("inf"))
+    )
+    reasoning.append(has_indecent_exposure(crecord))
+    reasoning.append(has_sexual_intercourse_w_animal(crecord))
+    reasoning.append(has_failure_to_register(crecord))
+    reasoning.append(has_abuse_of_corpse(crecord))
+    reasoning.append(has_paramilitary_training(crecord))
+
+    decision.reasoning = reasoning
+    decision.value = any(decision.reasoning)
+
+    return decision
+
+
+def all_fines_and_costs_paid(crecord: CRecord) -> Decision:
+    """
+    Explain if all the fines and costs on a list of cases are paid.
+    """
+    cases = crecord.cases
+    decision = Decision(name=f"Are all fines and costs paid for these cases?",)
+    decision.reasoning = [fines_and_costs_paid(case) for case in cases]
+    decision.value = all(decision.reasoning)
     return decision
 
 
@@ -352,9 +460,9 @@ def is_misdemeanor_or_ungraded(charge: Charge) -> Decision:
 
 def no_offense_against_family(
     item: Union[CRecord, Charge],
-    penalty_limit: int,
-    conviction_limit: int,
-    within_years: int,
+    penalty_limit: Optional[int] = None,
+    conviction_limit: Optional[int] = None,
+    within_years: Optional[int] = None,
 ) -> Decision:
     """
     Individuals are ineligible for sealing with certain offenses against the family. (Article D of Part II)
@@ -417,9 +525,9 @@ def no_offense_against_family(
 
 def no_firearms_offense(
     item: Union[CRecord, Charge],
-    penalty_limit: int,
-    conviction_limit: int,
-    within_years: int,
+    penalty_limit: Optional[int] = None,
+    conviction_limit: Optional[int] = None,
+    within_years: Optional[int] = None,
 ) -> Decision:
     """
     No disqualifying convictions for firearms offenses. (Chapter 61 offenses) 
@@ -482,9 +590,9 @@ def no_firearms_offense(
 
 def no_sexual_offense(
     item: Union[CRecord, Charge],
-    penalty_limit: int,
-    conviction_limit: int,
-    within_years: int,
+    penalty_limit: Optional[int] = None,
+    conviction_limit: Optional[int] = None,
+    within_years: Optional[int] = None,
 ) -> Decision:
     """
     No disqualifying convictions for sexual offenses.
@@ -590,7 +698,10 @@ def no_sexual_offense(
 
 
 def no_corruption_of_minors_offense(
-    charge: Charge, penalty_limit: int, conviction_limit: int, within_years: int
+    charge: Charge,
+    penalty_limit: Optional[int] = None,
+    conviction_limit: Optional[int] = None,
+    within_years: Optional[int] = None,
 ) -> Decision:
     """
     No disqualifying convictions for corruption of minors.
@@ -704,6 +815,16 @@ def offenses_punishable_by_two_or_more_years(
     return decision
 
 
+def has_indecent_exposure(crecord) -> Decision:
+    """
+    Decision that is true-valued if a crecord has any conviction for indecent exposure.
+    """
+    dec = no_indecent_exposure(crecord, conviction_limit=1)
+    dec.name = "Does this record have any convictions for indecent exposure?"
+    dec.value = not dec.value
+    return dec.value
+
+
 def no_indecent_exposure(
     crecord, conviction_limit: int, within_years: int = 15
 ) -> Decision:
@@ -732,6 +853,17 @@ def no_indecent_exposure(
     )
     decision.value = True if len(decision.reasoning) < conviction_limit else False
     return decision
+
+
+def has_sexual_intercourse_w_animal(crecord):
+    """
+    True-valued decision if crecord has any convictions for violation of 
+    18 Pa CS 3129.
+    """
+    dec = no_sexual_intercourse_w_animal(crecord, 1, float("inf"))
+    dec.name = "Does the record have any conviction for intercourse with an animal?"
+    dec.value = not dec.value
+    return dec
 
 
 def no_sexual_intercourse_w_animal(
@@ -763,36 +895,81 @@ def no_sexual_intercourse_w_animal(
     return decision
 
 
+def has_failure_to_register(crecord):
+    """
+    True-valued Decision if record contains any conviction for failure
+    to register.
+    """
+    dec = no_failure_to_register(crecord, conviction_limit=1)
+    dec.name = "Does the record have any convictions for failure to register?"
+    dec.value = not dec.value
+    return dec
+
+
 def no_failure_to_register(
-    crecord: CRecord, conviction_limit: int, within_years: int = 15
+    item: Option[CRecord, Charge],
+    conviction_limit: Optional[int] = None,
+    within_years: Optional[int] = 15,
 ) -> Decision:
     """
     Cannot seal if record contains conviction for failure to register within 15 years.
 
     18 PA.C.S. 9122.1(b)(2)(iii)(B)(III)
 
+
+    TODO the reasoning here doesn't return a readable set of Decisions.
+
     Returns:
         a Decision that is True if there were no failure-to-register offenses in the record.
     """
-    decision = Decision(
-        name="No failure-to-register convictions in this record.",
-        reasoning=[
-            charge
-            for case in crecord.cases
-            for charge in case.charges
-            if (
-                case.years_passed_disposition() < within_years
-                and charge.is_conviction()
-                and charge.get_statute_chapter() == 18
-                and (
-                    charge.get_statute_section() == 4915.1
-                    or charge.get_statute_section() == 4915.2
+    # A Crecord
+    try:
+        decision = Decision(
+            name="No failure-to-register convictions in this record.",
+            reasoning=[
+                charge
+                for case in item.cases  # if item is a charge, this will throw exception.
+                for charge in case.charges
+                if (
+                    (case.years_passed_disposition() < within_years)
+                    and not no_failure_to_register(charge)
                 )
+            ],
+        )
+        decision.value = True if len(decision.reasoning) < conviction_limit else False
+        return decision
+    # item is A Charge
+    except Exception as err:
+        decision = Decision(name="This charge is not a failure-to-register conviction")
+        decision.value = not (
+            item.is_conviction()
+            and item.get_statute_chapter() == 18
+            and (
+                item.get_statute_section() == 4915.1
+                or item.get_statute_section() == 4915.2
             )
-        ],
-    )
-    decision.value = True if len(decision.reasoning) < conviction_limit else False
-    return decision
+        )
+        if not item.is_conviction():
+            decision.reasoning = "Charge is not a conviction."
+        elif decision.value:
+            decision.reasoning = (
+                f"Charge for {item.statute} is not a failure-to-register conviction."
+            )
+        else:
+            decision.reasoning = (
+                f"Charge for {item.statute} is a failure-to-register conviction."
+            )
+        return decision
+
+
+def has_weapons_of_escape(crecord):
+    """
+    True-valued decision if record contains any convictions for a weapon of escape.
+    """
+    dec = no_weapons_of_escape(credits, 1, float("inf"))
+    dec.name = "Does the record have any convictions for a weapon of escape."
+    dec.value = not dec.value
+    return dec
 
 
 def no_weapons_of_escape(
@@ -821,6 +998,16 @@ def no_weapons_of_escape(
     return decision
 
 
+def has_abuse_of_corpse(crecord):
+    """
+    True-valued decision if crecord has any convictions for abuse of a corpse.
+    """
+    dec = no_abuse_of_corpse(crecord, 1, float("inf"))
+    dec.name = "Does record contain any convictions for abuse of a corpse?"
+    dec.value = not dec.value
+    return dec
+
+
 def no_abuse_of_corpse(
     crecord: CRecord, conviction_limit: int, within_years: int = 15
 ) -> Decision:
@@ -845,6 +1032,17 @@ def no_abuse_of_corpse(
     )
     decision.value = True if len(decision.reasoning) < conviction_limit else False
     return decision
+
+
+def has_paramilitary_training(crecord):
+    """
+    True valued Decision if record contains convictions for paramilitary
+    training.
+    """
+    dec = no_paramilitary_training(crecord, 1, float("inf"))
+    dec.name = "Does the record contain any convictions for paramilitary training?"
+    dec.value = not dec.value
+    return dec
 
 
 def no_paramilitary_training(
@@ -957,6 +1155,9 @@ def petition_sealing_for_single_case(case: Case) -> Decision:
 def petition_sealing_for_single_charge(charge: Charge):
     """
     Decide whether a single charge is sealable.
+
+    TODO `petition_sealing_for_single_charge` calls functions to check statutory exclusions, with values for 'penalty_limit' and so on, that seem like they shouldn't be relevant here?
+
     """
     charge_decision = Decision(name=f"Sealing charge {charge.offense}")
     # Conditions that determine whether this charge is sealable
@@ -981,3 +1182,44 @@ def petition_sealing_for_single_charge(charge: Charge):
     ]
     charge_decision.value = all(charge_decision.reasoning)
     return charge_decision
+
+
+def cannot_autoseal_m1_or_f(charge: Charge):
+    """
+    Autosealing is never possible for M1 or F convictions.
+
+    This method assumes the charge is a conviction.
+    
+    """
+    dec = Decision(name="Is the conviction less serious than an M1 or F?",)
+
+    if charge.grade is None:
+        dec.value = False
+        dec.reasoning = (
+            "Grade information is missing, so we cannot determine eligibility."
+        )
+        return dec
+
+    val = not Charge.grade_GTE(charge.grade, "M1")
+    dec.value = val
+    less_or_more = "less" if val else "more"
+    dec.reasoning = (
+        f"The grade {charge.grade} is {less_or_more} serious than an M1 or F."
+    )
+
+    return dec
+
+
+def no_m1_or_higher_in_this_case(case: Case) -> Decision:
+    """
+    True-valued decision if the case has no convictions graded m1 or more severe.
+    """
+    decision = Decision(
+        name="Are there any convictions for M1 or more severe offenses in this case?"
+    )
+    serious_charges = [
+        c for c in case.charges if c.is_conviction() and Charge.grade_GTE(c.grade, "M1")
+    ]
+    decision.value = False if len(serious_charges) > 0 else True
+    decision.reasoning = f"There are {len(serious_charges)} charges graded M1 or more severe in the case {case.docket_number}."
+    return decision

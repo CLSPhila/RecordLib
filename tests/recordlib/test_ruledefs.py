@@ -4,6 +4,7 @@ from RecordLib.analysis.ruledefs.simple_sealing_rules import (
     fines_and_costs_paid,
     is_misdemeanor_or_ungraded,
     no_danger_to_person_offense,
+    cannot_autoseal_m1_or_f,
 )
 from RecordLib.crecord import Sentence, SentenceLength
 from RecordLib.crecord import Case
@@ -104,3 +105,23 @@ def test_art_b_danger_to_person_offenses(example_charge, statute, grade, value):
     example_charge.grade = grade
     res = no_danger_to_person_offense(example_charge, 10, 20, 1)
     assert res.value == value
+
+
+@pytest.mark.parametrize(
+    "grade,value,less_or_more",
+    [
+        ("F", False, "more"),
+        ("M1", False, "more",),
+        ("M2", True, "less"),
+        ("M3", True, "less"),
+        ("M", True, "less"),
+        ("S", True, "less"),
+        (None, False, "missing"),
+    ],
+)
+def test_cannot_autoseal_m1_or_f(example_charge, grade, value, less_or_more):
+    example_charge.grade = grade
+    example_charge.disposition = "Guilty"
+    result = cannot_autoseal_m1_or_f(example_charge)
+    assert result.value == value
+    assert less_or_more in result.reasoning
