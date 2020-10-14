@@ -1,2 +1,7 @@
-from .decision import Decision, RecordEligibilityDecision, PetitionDecision
+from .decision import (
+    Decision,
+    RecordEligibilityDecision,
+    PetitionDecision,
+    FilterDecision,
+)
 from .analysis import Analysis
