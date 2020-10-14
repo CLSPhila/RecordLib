@@ -101,4 +101,4 @@ def autosealing_eligibility(
             decision.value["eligible"].append(sealable_case)
         if len(unsealable_case.charges) > 0:
             decision.value["ineligible"].append(unsealable_case)
-    return decision
+    return crecord, decision
