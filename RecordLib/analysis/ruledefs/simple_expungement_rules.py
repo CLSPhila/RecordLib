@@ -63,6 +63,13 @@ def is_summary(charge: Charge) -> Decision:
 
 
 def is_conviction(charge: Charge) -> Decision:
+
+    if charge.disposition is None or charge.disposition.strip() == "":
+        return Decision(
+            name=f"Is this charge for {charge.offense} a conviction?",
+            value=None,
+            reasoning="The charge is missing a disposition, so this case may not be closed (it may have simply been transferred).",
+        )
     return Decision(
         name=f"Is this charge for {charge.offense} a conviction?",
         value=charge.is_conviction(),

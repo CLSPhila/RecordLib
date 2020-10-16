@@ -157,10 +157,10 @@ def expunge_summary_convictions(crecord: CRecord) -> Tuple[CRecord, PetitionDeci
                         Expungement.ExpungementTypes.PARTIAL_EXPUNGEMENT
                     )
                 conclusion.value.append(exp)
+
             if len(not_expungeable_case.charges) > 0:
                 case_d.value = False
-
-        remaining_record.cases.append(not_expungeable_case)
+                remaining_record.cases.append(not_expungeable_case)
         conclusion.reasoning.append(case_d)
 
     else:
@@ -184,7 +184,7 @@ def expunge_nonconvictions(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]
         name="Expungements of nonconvictions.", value=[], reasoning=[]
     )
 
-    remaining_recordord = CRecord(person=crecord.person)
+    remaining_record = CRecord(person=crecord.person)
     for case in crecord.cases:
         case_d = Decision(
             name=f"Does {case.docket_number} have expungeable nonconvictions?",
@@ -193,15 +193,9 @@ def expunge_nonconvictions(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]
         unexpungeable_case = case.partialcopy()
         expungeable_case = case.partialcopy()
         for charge in case.charges:
-            charge_d = Decision(
-                name=f"Is the charge for {charge.offense} a nonconviction?",
-                value=not charge.is_conviction(),
-                reasoning=f"The charge's disposition {charge.disposition} indicates a conviction"
-                if charge.is_conviction()
-                else f"The charge's disposition {charge.disposition} indicates its not a conviction.",
-            )
+            charge_d = ser.is_conviction(charge)
 
-            if bool(charge_d) is True:
+            if bool(charge_d) is False and charge_d.value is not None:
                 expungeable_case.charges.append(charge)
             else:
                 unexpungeable_case.charges.append(charge)
@@ -221,10 +215,9 @@ def expunge_nonconvictions(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]
             case_d.value = False
 
         if len(unexpungeable_case.charges) > 0:
-            remaining_recordord.cases.append(unexpungeable_case)
+            remaining_record.cases.append(unexpungeable_case)
         conclusion.reasoning.append(case_d)
-
-    return remaining_recordord, conclusion
+    return remaining_record, conclusion
 
 
 def seal_convictions(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]:
@@ -340,19 +333,4 @@ def seal_convictions(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]:
         # the global conditions for sealing failed, so the modified record should contain all the cases.
         mod_rec.cases = crecord.cases
     return mod_rec, conclusion
-
-
-def autoseal(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]:
-    """
-    Identify parts of a 'CRecord' that are eligible for autosealing under Clean Slate. 
-
-    These records are sealed automatically, not by petition. So the 'PetitionDecision' that this 
-    function returns is just a container for the cases that would get autosealed. I am still 
-    returning a PetitionDecision only so that the return values of these functions are consistent,
-    and thus the data structure of the Analysis stays consistent.
-    """
-    conclusion = PetitionDecision(
-        name="Autosealing convictions under the Clean Slate reforms.", reasoning=[]
-    )
-    return crecord, conclusion
 
