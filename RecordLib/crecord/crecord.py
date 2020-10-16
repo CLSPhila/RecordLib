@@ -188,12 +188,15 @@ class CRecord:
             case for case in self.cases if case.docket_number != docket_number
         ]
 
-    def add_case(self, case):
+    def add_case(self, new_case):
         """
         Add a case to this record. Check to make sure that any subordinate cases (i.e. a case that was Held For Court, so that the 'real' final case is something else) are properly handled.
         """
-        # TODO check for uniqueness of docket numbers
-        self.cases.append(case)
+        docket_nums = {c.docket_number: i for i, c in enumerate(self.cases)}
+        if docket_nums.get(new_case.docket_number, None) is not None:
+            self.cases[docket_nums.get(new_case.docket_number)].merge(new_case)
+        else:
+            self.cases.append(new_case)
         self.handle_transferred_cases()
 
     def add_summary(

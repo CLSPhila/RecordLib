@@ -180,6 +180,17 @@ class Case:
             related_cases=self.related_cases,
         )
 
+    def merge(self, other_case: Case) -> Case:
+        """
+        Combine this case with another, greedily picking up information that the additional case has.
+        """
+
+        attrs = self.__dict__.keys()
+        for attr in attrs:
+            # TODO merge identical charges together.
+            if getattr(self, attr) is None and getattr(other_case, attr) is not None:
+                setattr(self, attr, getattr(other_case, attr))
+
     def fines_remaining(self) -> Optional[int]:
         """ Return the value of the fines remaining on the case.
 

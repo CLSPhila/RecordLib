@@ -144,3 +144,20 @@ def test_add_case_held_for_court(example_person):
     assert len(record.cases) == 1
 
     assert record.cases[0].charges[0].disposition == "Guilty"
+
+
+def test_add_case_deduplicates(example_person, example_case):
+
+    record = CRecord(example_person, cases=[])
+    record.add_case(example_case)
+
+    case2 = example_case.partialcopy()
+    record.add_case(case2)
+
+    assert len(record.cases) == 1
+
+    case3 = example_case.partialcopy()
+    case3.docket_number = "CP-New-Case"
+    record.add_case(case3)
+
+    assert len(record.cases) == 2
