@@ -173,7 +173,7 @@ def by_name(
             continue
         sr = SourceRecord(case["docket_sheet_text"], parser)
         sourcerecords.append(sr)
-        crecord.add_sourcerecord(sr, case_merge_strategy="overwrite_old")
+        crecord.add_sourcerecord(sr)
 
     logger.info("Built CRecord.")
     # Create and Analysis using the CRecord. This Analysis will explain

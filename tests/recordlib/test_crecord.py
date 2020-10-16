@@ -33,32 +33,37 @@ def test_add_summary_doesnt_add_duplicates(example_summary):
     assert len(rec.cases) == len(example_summary.get_cases())
 
 
-def test_add_summary_merge_strategies(example_summary):
-    summary2 = copy.deepcopy(example_summary)
-    summary2.get_cases()[0].otn = "a_different_otn"
-    # default merge_strategy is to ignore new duplicates or
-    # new Person
-    rec = CRecord(Person("Dummy", "Name", None))
-    rec.add_summary(example_summary)
-    rec.add_summary(summary2)
-    assert rec.cases[0].otn == example_summary.get_cases()[0].otn
-    assert rec.person.first_name == "Dummy"
+# Hiding this test. I've added a CRrecord#add_case method
+#   the goal of which is to handle all case-adding needs.
+#   So there are no longer different 'merging strategies.'
+#   But I'm not 100% convinced I won't need them again, so
+#   leaving this here as a reminder.
+# def test_add_summary_merge_strategies(example_summary):
+#     summary2 = copy.deepcopy(example_summary)
+#     summary2.get_cases()[0].otn = "a_different_otn"
+#     # default merge_strategy is to ignore new duplicates or
+#     # new Person
+#     rec = CRecord(Person("Dummy", "Name", None))
+#     rec.add_summary(example_summary)
+#     rec.add_summary(summary2)
+#     assert rec.cases[0].otn == example_summary.get_cases()[0].otn
+#     assert rec.person.first_name == "Dummy"
 
-    # alternate merge strategy overwrites duplicates w/ new case
-    # but doesn't touch the Person
-    rec = CRecord(Person("Dummy", "Name", None))
-    rec.add_summary(example_summary)
-    rec.add_summary(summary2, case_merge_strategy="overwrite_old")
-    assert rec.cases[0].otn == summary2.get_cases()[0].otn
-    assert rec.person.first_name == "Dummy"
+#     # alternate merge strategy overwrites duplicates w/ new case
+#     # but doesn't touch the Person
+#     rec = CRecord(Person("Dummy", "Name", None))
+#     rec.add_summary(example_summary)
+#     rec.add_summary(summary2, case_merge_strategy="overwrite_old")
+#     assert rec.cases[0].otn == summary2.get_cases()[0].otn
+#     assert rec.person.first_name == "Dummy"
 
-    # override_person param provides for overwriting the Person with the new summary's
-    # Person
-    rec = CRecord(Person("Dummy", "Name", None))
-    rec.add_summary(example_summary)
-    rec.add_summary(summary2, override_person=True)
-    assert rec.cases[0].otn != summary2.get_cases()[0].otn
-    assert rec.person.first_name == summary2.get_defendant().first_name
+#     # override_person param provides for overwriting the Person with the new summary's
+#     # Person
+#     rec = CRecord(Person("Dummy", "Name", None))
+#     rec.add_summary(example_summary)
+#     rec.add_summary(summary2, override_person=True)
+#     assert rec.cases[0].otn != summary2.get_cases()[0].otn
+#     assert rec.person.first_name == summary2.get_defendant().first_name
 
 
 def test_add_sourcerecord(example_sourcerecord):

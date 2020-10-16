@@ -202,7 +202,7 @@ class CRecord:
     def add_summary(
         self,
         summary: "Summary",
-        case_merge_strategy: str = "ignore_new",
+        # case_merge_strategy: str = "ignore_new",
         override_person: bool = False,
     ) -> CRecord:
         """
@@ -224,26 +224,9 @@ class CRecord:
         # Get D's name from the summary
         if override_person or self.person is None:
             self.person = summary.get_defendant()
-        # Get the cases from the summary
-        docket_nums = [c.docket_number for c in self.cases]
-        for i, new_case in enumerate(summary.get_cases()):
-            if new_case.docket_number not in docket_nums:
-                logging.info(f"Adding {new_case.docket_number} to record.")
-                self.cases.append(new_case)
-                docket_nums.append(new_case.docket_number)
-            elif case_merge_strategy == "ignore_new":
-                logging.info(
-                    f"Case with docket { new_case.docket_number } already part of record. Ignoring it."
-                )
-            elif case_merge_strategy == "overwrite_old":
-                logging.info(
-                    f"Case with docket { new_case.docket_number } already part of record. Using it."
-                )
-                self.cases[i] = new_case
-            else:
-                logging.info(
-                    f"Case with docket { new_case.docket_number } already part of record, no merge strategy selected. Ignoring duplicate."
-                )
+        for new_case in summary.get_cases():
+            logging.info(f"Adding {new_case.docket_number} to record.")
+            self.add_case(new_case)
 
         return self
 
@@ -257,20 +240,15 @@ class CRecord:
         Returns:
             This CRecord, with the information from `docket` incorporated into the record.
         """
-        replaced = False
+        # TODO Person#merge(new_person) instead of dumbly overwriting Person in CRecord#add_docket
         self.person = docket._defendant
-        for i, case in enumerate(self.cases):
-            if case.docket_number == docket._case.docket_number:
-                replaced = True
-                self.cases[i] = docket._case
-        if replaced is False:
-            self.cases.append(docket._case)
+        self.add_case(docket._case)
         return self
 
     def add_sourcerecord(
         self,
         sourcerecord: "SourceRecord",
-        case_merge_strategy: str = "ignore_new",
+        # case_merge_strategy: str = "ignore_new",
         override_person: bool = False,
         docket_number: Optional[str] = None,
     ) -> CRecord:
@@ -306,28 +284,10 @@ class CRecord:
             # We're done. No modifications of self are necessary.
             return self
 
-        docket_nums = [c.docket_number for c in self.cases]
-        for i, new_case in enumerate(sourcerecord.cases):
+        for new_case in sourcerecord.cases:
             # If we're only adding one case, and have passed in a docket number, give the new case the docket number.
             if docket_number is not None and len(sourcerecord.cases) == 1:
                 new_case.docket_number = docket_number
-            if new_case.docket_number not in docket_nums:
-                logging.info(f"Adding {new_case.docket_number} to record.")
-                self.cases.append(new_case)
-                docket_nums.append(new_case.docket_number)
-            elif case_merge_strategy == "ignore_new":
-                logging.info(
-                    f"Case with docket { new_case.docket_number } already part of record. Ignoring it."
-                )
-            elif case_merge_strategy == "overwrite_old":
-                logging.info(
-                    f"Case with docket { new_case.docket_number } already part of record. Using it."
-                )
-                self.cases[i] = new_case
-            else:
-                logging.info(
-                    f"Case with docket { new_case.docket_number } already part of record, no merge strategy selected. Ignoring duplicate."
-                )
-
+            self.add_case(new_case)
         return self
 

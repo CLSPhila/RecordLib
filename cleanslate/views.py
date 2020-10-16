@@ -135,7 +135,6 @@ def integrate_dockets(
             # Integrate this docket with the full crecord.
             crecord.add_sourcerecord(
                 rlsource,
-                case_merge_strategy="overwrite_old",
                 override_person=True,
                 docket_number=docket_source_record.docket_num,
             )
