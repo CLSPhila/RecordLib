@@ -22,6 +22,7 @@ function Case(props) {
     affiant,
     arresting_agency,
     arresting_agency_address,
+    related_cases,
     toggleEditing,
   } = props;
   const caseStyle = {
@@ -61,6 +62,20 @@ function Case(props) {
       <div></div>
       <div></div>
       <Charges caseId={id} charges={charges} editing={false} />
+      {related_cases ? (
+        related_cases.map((docket_num) => {
+          return (
+            <div>
+              <div>Related cases:</div>
+              <ul>
+                <li>{docket_num}</li>
+              </ul>
+            </div>
+          );
+        })
+      ) : (
+        <></>
+      )}
     </div>
   );
 }
@@ -83,6 +98,7 @@ Case.propTypes = {
   affiant: PropTypes.string,
   arresting_agency: PropTypes.string,
   arresting_agency_address: PropTypes.string,
+  related_cases: PropTypes.arrayOf(PropTypes.string),
   toggleEditing: PropTypes.func,
 };
 

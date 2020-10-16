@@ -100,6 +100,7 @@ class CaseSerializer(S.Serializer):
     arresting_agency_address = S.CharField(
         required=False, allow_blank=True, default="", allow_null=True
     )
+    related_cases = S.ListField(child=S.CharField(allow_null=True), required=False,)
 
 
 class AddressSerializer(S.Serializer):

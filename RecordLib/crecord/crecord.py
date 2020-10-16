@@ -155,7 +155,9 @@ class CRecord:
                     if len(other_cases) > 0:
                         other_case = other_cases[0]
                         # if we've found a case that matches, remove this charge from this case, and add this docket number to the matching cases's information.
-                        other_case.related_cases.append(case.docket_number)
+                        other_case.related_cases = list(
+                            set(other_case.related_cases + [case.docket_number])
+                        )
                         case.remove_charge_by_index(ch_idx)
                         # Also, if a case no longer has any charges, remove it from this crecord.
                         if len(case.charges) == 0:

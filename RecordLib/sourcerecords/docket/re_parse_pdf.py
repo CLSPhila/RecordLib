@@ -14,9 +14,10 @@ def which_court(txt: str) -> str:
     """
     given the text of a docket, 
     """
-    if re.search("common pleas", txt, re.I):
+    first_lines = "\n".join(txt.split("\n")[0:10])
+    if re.search("common pleas", first_lines, re.I):
         return "CP"
-    if re.search("magisterial district", txt, re.I):
+    if re.search("magisterial district", first_lines, re.I):
         return "MDJ"
     return ""
 

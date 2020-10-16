@@ -21,14 +21,14 @@ export default function cRecordReducer(state = initialCrecordState, action) {
       const newState = {
         cRecord: {
           [CRECORD_ID]: Object.assign({}, state.cRecord[CRECORD_ID], {
-            cases: state.cRecord[CRECORD_ID].cases.concat(
-              newCases.cRecord[CRECORD_ID].cases
-            ),
+            cases: newCases.cRecord[CRECORD_ID].cases, //state.cRecord[CRECORD_ID].cases.concat(
+            //newCases.cRecord[CRECORD_ID].cases
+            //), <-- overwrite new w/ old, not concat.
           }),
         },
-        cases: Object.assign({}, state.cases, newCases.cases),
-        charges: Object.assign({}, state.charges, newCases.charges),
-        sentences: Object.assign({}, state.sentences, newCases.sentences),
+        cases: Object.assign({}, newCases.cases), //state.cases, newCases.cases), <-- I think we want to just overwrite the crecord in state
+        charges: Object.assign({}, newCases.charges), //state.charges, newCases.charges),     when we get a new crecord back from the server.
+        sentences: Object.assign({}, newCases.sentences), //state.sentences, newCases.sentences),
       };
       return newState;
     }

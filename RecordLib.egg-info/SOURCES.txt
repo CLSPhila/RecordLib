@@ -10,6 +10,8 @@ RecordLib/analysis/__init__.py
 RecordLib/analysis/analysis.py
 RecordLib/analysis/decision.py
 RecordLib/analysis/ruledefs/__init__.py
+RecordLib/analysis/ruledefs/autosealing_rules.py
+RecordLib/analysis/ruledefs/filter_rules.py
 RecordLib/analysis/ruledefs/petition_rules.py
 RecordLib/analysis/ruledefs/simple_expungement_rules.py
 RecordLib/analysis/ruledefs/simple_sealing_rules.py
