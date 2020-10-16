@@ -172,10 +172,11 @@ class CRecord:
         found_cases = []
         for case in self.cases:
             for charge in case.charges:
-                breakpoint()
-                if (case.otn == otn or charge.otn == otn) and (
+                otns_match = case.otn == otn or charge.otn == otn
+                this_case_isnt_excluded = (
                     case.docket_number not in except_for_docket_numbers
-                ):
+                )
+                if otns_match and this_case_isnt_excluded:
                     found_cases.append(case)
         return found_cases
 

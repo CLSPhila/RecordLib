@@ -135,6 +135,7 @@ def test_add_case_held_for_court(example_person):
         charges=[],
     )
     final_status = Charge("Silliness", "M1", statute="example", disposition="Guilty")
+    main_case.charges.append(final_status)
 
     record.add_case(subordinated_case)
     assert len(record.cases) == 1
@@ -142,4 +143,4 @@ def test_add_case_held_for_court(example_person):
 
     assert len(record.cases) == 1
 
-    assert record.cases[0].disposition == "Guilty"
+    assert record.cases[0].charges[0].disposition == "Guilty"
