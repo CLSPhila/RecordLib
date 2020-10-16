@@ -8,6 +8,7 @@ Note - it looks like i can't use dataclasses throughout because
 from __future__ import annotations
 from typing import List, Optional
 import logging
+import re
 from dataclasses import asdict
 from datetime import date
 from dateutil.relativedelta import relativedelta
@@ -133,6 +134,66 @@ class CRecord:
             "person": asdict(self.person),
             "cases": [c.to_dict() for c in self.cases],
         }
+
+    def handle_transferred_cases(self):
+        """
+        Find any cases in this record that were transferred to some other case in the record. 
+
+        If a charge is "Held for Court", try to find the same charge elsewhere in the record (matching by OTN)
+        If found, remove the 'held-for-court' charge from its Case, and add the case's docket number to the 'prior_cases' list on the case with the real final disposition.
+        """
+        for case in self.cases:
+            for ch_idx, charge in enumerate(case.charges):
+                if charge.disposition and re.search(
+                    "held for court", charge.disposition, re.I
+                ):
+                    # try to find another charge that matches this one, using the OTN.
+                    other_cases = self.find_case_by_otn(
+                        case.otn or charge.otn,
+                        except_for_docket_numbers=[case.docket_number],
+                    )
+                    if len(other_cases) > 0:
+                        other_case = other_cases[0]
+                        # if we've found a case that matches, remove this charge from this case, and add this docket number to the matching cases's information.
+                        other_case.related_cases.append(case.docket_number)
+                        case.remove_charge_by_index(ch_idx)
+                        # Also, if a case no longer has any charges, remove it from this crecord.
+                        if len(case.charges) == 0:
+                            self.remove_case_by_docket_number(case.docket_number)
+
+    def find_case_by_otn(self, otn, except_for_docket_numbers=None) -> List[Case]:
+        """
+        Find cases in a record by OTN number. 
+        """
+        if except_for_docket_numbers is None:
+            except_for_docket_numbers = []
+        if otn is None:
+            return []
+        found_cases = []
+        for case in self.cases:
+            for charge in case.charges:
+                breakpoint()
+                if (case.otn == otn or charge.otn == otn) and (
+                    case.docket_number not in except_for_docket_numbers
+                ):
+                    found_cases.append(case)
+        return found_cases
+
+    def remove_case_by_docket_number(self, docket_number):
+        """
+        Remove a case from this record that matches the docket_number.
+        """
+        self.cases = [
+            case for case in self.cases if case.docket_number != docket_number
+        ]
+
+    def add_case(self, case):
+        """
+        Add a case to this record. Check to make sure that any subordinate cases (i.e. a case that was Held For Court, so that the 'real' final case is something else) are properly handled.
+        """
+        # TODO check for uniqueness of docket numbers
+        self.cases.append(case)
+        self.handle_transferred_cases()
 
     def add_summary(
         self,

@@ -86,7 +86,7 @@ def ts_dict(dct):
 @to_serializable.register(Sentence)
 @to_serializable.register(Decision)
 @to_serializable.register(RecordEligibilityDecision)
-@to_serialazable.register(FilterDecision)
+@to_serializable.register(FilterDecision)
 @to_serializable.register(PetitionDecision)
 @to_serializable.register(Analysis)
 @to_serializable.register(Sealing)

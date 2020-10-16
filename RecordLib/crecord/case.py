@@ -31,6 +31,9 @@ class Case:
     affiant: str
     arresting_agency: str
     arresting_agency_address: str
+    related_cases: List[
+        str
+    ]  # an optional list of docket numbers of cases that are related to this one, such as cases that were transferred and concluded here.
 
     @staticmethod
     def from_dict(dct: str) -> Optional[Case]:
@@ -55,6 +58,7 @@ class Case:
                 affiant=dct.get("affiant"),
                 arresting_agency=dct.get("arresting_agency"),
                 arresting_agency_address=dct.get("arresting_agency_address"),
+                related_cases=dct.get("related_cases", []),
             )
         except:
             return None
@@ -77,6 +81,7 @@ class Case:
         arresting_agency=None,
         arresting_agency_address=None,
         complaint_date=None,
+        related_cases=None,
     ) -> None:
         self.docket_number = docket_number
         self.otn = otn
@@ -96,6 +101,10 @@ class Case:
         self.affiant = affiant
         self.arresting_agency = arresting_agency
         self.arresting_agency_address = arresting_agency_address
+        if related_cases is None:
+            self.related_cases = []
+        else:
+            self.related_cases = related_cases
 
     def years_passed_disposition(self) -> int:
         """ The number of years that have passed since the disposition date of this case."""
@@ -168,6 +177,7 @@ class Case:
             affiant=self.affiant,
             arresting_agency=self.arresting_agency,
             arresting_agency_address=self.arresting_agency_address,
+            related_cases=self.related_cases,
         )
 
     def fines_remaining(self) -> Optional[int]:
@@ -215,3 +225,12 @@ class Case:
                 elif len(val) > 0:
                     score += 1
         return score
+
+    def remove_charge_by_index(self, idx):
+        """
+        remove a charge from the list of charges on this case.
+        """
+        try:
+            self.charges.pop(idx)
+        except IndexError:
+            pass
