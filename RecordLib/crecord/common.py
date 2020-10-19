@@ -130,7 +130,7 @@ class Charge:
     sentences: Optional[List[Sentence]] = None
     # TODO sequence should not be optional.
     sequence: Optional[
-        int
+        str
     ] = None  # A charge on a docket gets a sequence number. Its like an ID for the charge, within the docket.
     otn: Optional[str] = None
 
@@ -198,7 +198,11 @@ class Charge:
             new_charges = []
             is_new = True
             for ch in accumulator:
-                if isinstance(charge.sequence, int) and charge.sequence == ch.sequence:
+                if (
+                    isinstance(charge.sequence, str)
+                    and charge.sequence == ch.sequence
+                    and charge.sequence.strip() != ""
+                ):
                     ch.combine_with(charge)
                     is_new = False
             if is_new:

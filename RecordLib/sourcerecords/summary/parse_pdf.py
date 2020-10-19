@@ -357,6 +357,7 @@ def get_cp_cases(summary_xml: etree.Element) -> List:
         for seq in open_sequences:
             charge = Charge(
                 offense=text_or_blank(seq.find("description")),
+                sequence=text_or_blank(seq.find("sequence_num")),
                 statute=text_or_blank(seq.find("statute")),
                 grade=text_or_blank(seq.find("grade")),
                 disposition=text_or_blank(seq.find("sequence_disposition")),
@@ -435,6 +436,7 @@ def get_md_cases(summary_xml: etree.Element) -> List:
         md_charge_elems = case.xpath(".//charge")
         for charge in md_charge_elems:
             charge = Charge(
+                sequence=text_or_blank(charge.find("sequence_num")),
                 offense=text_or_blank(charge.find("description")),
                 statute=text_or_blank(charge.find("statute")),
                 grade=text_or_blank(charge.find("grade")),

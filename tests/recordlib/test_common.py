@@ -50,7 +50,7 @@ def test_charge():
 def test_charge_merge_reduce():
     charges = [
         Charge(
-            sequence=1,
+            sequence="1",
             offense="Eating w/ mouth open",
             grade="M2",
             statute="24 &sect; 102",
@@ -59,7 +59,7 @@ def test_charge_merge_reduce():
             sentences=[],
         ),
         Charge(
-            sequence=1,
+            sequence="1",
             offense="Eating w/ mouth open",
             grade=None,
             statute="24 &sect; 102",
@@ -68,7 +68,7 @@ def test_charge_merge_reduce():
             sentences=[],
         ),
         Charge(
-            sequence=2,
+            sequence="2",
             offense="Shoveling snow too exuberantly",
             grade="F1",
             statute="24 &sect; 202",
