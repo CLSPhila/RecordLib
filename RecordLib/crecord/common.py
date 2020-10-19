@@ -128,6 +128,7 @@ class Charge:
     disposition: Optional[str] = None
     disposition_date: Optional[date] = None
     sentences: Optional[List[Sentence]] = None
+    # TODO sequence should not be optional.
     sequence: Optional[
         int
     ] = None  # A charge on a docket gets a sequence number. Its like an ID for the charge, within the docket.

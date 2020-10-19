@@ -41,7 +41,7 @@ def test_download_petition(admin_user, admin_client, example_case):
                     "organization_phone": "123-123-1234",
                     "bar_id": "11222",
                 },
-                "client": {"first_name": "Suzy", "last_name": "Smith",},
+                "client": {"first_name": "Suzy", "last_name": "Smith"},
                 "cases": [to_serializable(example_case)],
                 "expungement_type": Expungement.ExpungementTypes.FULL_EXPUNGEMENT,
                 "petition_type": "Expungment",  # as opposed to "Sealing",

@@ -33,7 +33,9 @@ class Person:
                 last_name=dct.get("last_name"),
                 date_of_birth=convert_datestring(dct.get("date_of_birth")),
                 date_of_death=convert_datestring(dct.get("date_of_death")),
-                aliases=[val for val in dct.get("aliases") if val is not None] or [],
+                aliases=[val for val in dct.get("aliases") if val is not None]
+                if dct.get("aliases") is not None
+                else [],
                 ssn=dct.get("ssn"),
                 address=Address.from_dict(dct.get("address")),
             )

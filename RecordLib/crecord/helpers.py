@@ -4,7 +4,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def convert_datestring(datestring: Union[str,date,datetime,None]) -> date:
+
+def convert_datestring(datestring: Union[str, date, datetime, None]) -> date:
     """
     Convert a datestring to a date
     """
@@ -14,7 +15,7 @@ def convert_datestring(datestring: Union[str,date,datetime,None]) -> date:
         return datestring
     for fmtstring in [r"%Y-%m-%d", r"%m/%d/%Y"]:
         try:
-            return datetime.strptime(datestring,fmtstring).date()
+            return datetime.strptime(datestring, fmtstring).date()
         except:
             continue
     logger.error(f"Could not read date string: {datestring}")

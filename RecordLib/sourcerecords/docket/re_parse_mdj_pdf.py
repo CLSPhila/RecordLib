@@ -1,8 +1,8 @@
-from RecordLib.crecord import Person, Case
-from RecordLib.sourcerecords.parsingutilities import get_text_from_pdf
 from typing import Union, BinaryIO, Tuple, Callable, List, Optional
 import re
 import logging
+from RecordLib.crecord import Person, Case, Charge
+from RecordLib.sourcerecords.parsingutilities import get_text_from_pdf
 
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ class PATTERNS:
     alias_names_end = re.compile(r"CASE PARTICIPANTS", re.I)
     end_of_page = re.compile(r"(CPCMS|AOPC)\s\d{4}", re.I)
     charges = re.compile(
-        r"^\s*\d\s+((\w|\d|\s(?!\s)|\-|\u00A7|\*)+)\s{2,}(\w{0,2})\s{2,}([\d|\D]+)\s{2,}(\d{1,2}\/\d{1,2}\/\d{4})\s{2,}(\D{2,})",
+        r"^\s*(?P<sequence_num>\d)\s+((\w|\d|\s(?!\s)|\-|\u00A7|\*)+)\s{2,}(\w{0,2})\s{2,}([\d|\D]+)\s{2,}(\d{1,2}\/\d{1,2}\/\d{4})\s{2,}(\D{2,})",
         re.U,
     )
     charges_search_overflow = re.compile(r"^\s+(\w+\s*\w*)\s*$", re.I)
@@ -154,9 +154,10 @@ def parse_mdj_pdf_text(txt: str) -> Tuple[Person, List[Case], List[str]]:
         m = PATTERNS.charges.search(line)  # Arrest.php;595
         if m:
             charge_info = dict()
-            charge_info["statute"] = m.group(1)
-            charge_info["grade"] = m.group(3)
-            charge_info["offense"] = m.group(4)
+            charge_info["sequence"] = m.group("sequence_num")
+            charge_info["statute"] = m.group(2)
+            charge_info["grade"] = m.group(4)
+            charge_info["offense"] = m.group(5)
             charge_info["disposition"] = m.group(6)
             m2 = PATTERNS.charges_search_overflow.search(lines[idx + 1])
             if m2:
@@ -192,6 +193,7 @@ def parse_mdj_pdf_text(txt: str) -> Tuple[Person, List[Case], List[str]]:
     }
     person = Person.from_dict(person_info)
     case = Case.from_dict(case_info)
+    case.charges = Charge.reduce_merge(case.charges)
     logger.info("Finished parsing MDJ docket")
 
     return person, [case], []

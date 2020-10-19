@@ -16,8 +16,8 @@ def test_word_starting_near():
 
 def test_map_line():
     col_dict = {
-        "A": 0,
-        "B": 20,
+        "A": {"idx": 0, "fmt": None},
+        "B": {"idx": 20, "fmt": None},
     }
     line = "Joe                 Smith"
     assert map_line(line, col_dict) == {

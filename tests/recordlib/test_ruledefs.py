@@ -86,8 +86,12 @@ def test_expunge_summary_convictions(example_crecord, example_charge):
 def test_expunge_nonconvictions(example_crecord, example_charge, disp):
     example_crecord.cases[0].charges[0].disposition = disp
     mod_rec, analysis = ruledefs.expunge_nonconvictions(example_crecord)
-    assert len(analysis.value) == len(example_crecord.cases)
-    assert len(mod_rec.cases) == 0
+    if disp != "":
+        assert len(analysis.value) == len(example_crecord.cases)
+        assert len(mod_rec.cases) == 0
+    else:
+        # Disposition that's blank is assumed not expungeable (because still active, perhaps)
+        assert analysis.value == []
 
 
 @pytest.mark.parametrize(
