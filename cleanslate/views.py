@@ -16,6 +16,7 @@ from RecordLib.analysis import Analysis
 from RecordLib.utilities.serializers import to_serializable
 from RecordLib.utilities import cleanslate_screen
 from RecordLib.analysis.ruledefs import (
+    filter_traffic_cases,
     expunge_summary_convictions,
     expunge_nonconvictions,
     expunge_deceased,
@@ -306,6 +307,7 @@ class AnalysisView(APIView):
                 rec = CRecord.from_dict(serializer.validated_data)
                 analysis = (
                     Analysis(rec)
+                    .rule(filter_traffic_cases)
                     .rule(expunge_deceased)
                     .rule(expunge_over_70)
                     .rule(expunge_nonconvictions)

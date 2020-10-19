@@ -118,6 +118,9 @@ export function denormalizeCRecord(crecordNormalized) {
  *
  * Petitions will get separated out into their own key in state.
  *
+ * Petitions from the analysis will get added to the set of petitions
+ * the user may decide to generate in this session.
+ *
  * The analysis will also just get stored as-is in state.
  *
  * It starts with a structure like
@@ -138,8 +141,9 @@ export function denormalizeCRecord(crecordNormalized) {
 export function normalizeAnalysis(analysis) {
   const petitions = analysis.decisions
     .map((decision) => {
-      return decision.value;
+      return decision.type === "Petition" ? decision.value : null;
     })
+    .filter(Boolean)
     .flat();
   return { petitions: petitions, analysis: analysis };
 }

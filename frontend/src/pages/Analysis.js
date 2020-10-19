@@ -8,6 +8,7 @@ import Paper from "@material-ui/core/Paper";
 import { Link as RouterLink } from "react-router-dom";
 import Button from "@material-ui/core/Button";
 import PetitionDecision from "frontend/src/components/PetitionDecision";
+import FilterDecision from "frontend/src/components/FilterDecision";
 
 function Analysis(props) {
   const { analysis } = props;
@@ -22,7 +23,13 @@ function Analysis(props) {
               Get Petitions
             </Button>
             {analysis.decisions.map((decision, idx) => {
-              return <PetitionDecision key={idx} decision={decision} />;
+              return decision.type === "Petition" ? (
+                <PetitionDecision key={idx} decision={decision} />
+              ) : decision.type === "Filter" ? (
+                <FilterDecision key={idx} decision={decision} />
+              ) : (
+                <React.Fragment key={idx} />
+              );
             })}
           </div>
         ) : (

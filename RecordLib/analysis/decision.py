@@ -41,13 +41,17 @@ class PetitionDecision(Decision):
     A Decision where the 'value' is a list of `Petitions`. The `reasoning` is a list of the Decisions that went into compiling the list of Petitions to generate. 
     """
 
-    pass
-
+    def __init__(self, *args, **kwargs):
+        self.type = "Petition"
+        super().__init__(*args, **kwargs)
 
 class RecordEligibilityDecision(Decision):
     """
     A Decision where the 'value' is a dict of decisions about whether a record and its cases and charges are eligible for sealing or expungement 
     under a set of rules. It looks like:
+
+    Its distinguished from a PetitionDecision by the fact that this Decision doesn't propose creating Petitions. You could create a PetitionDecision 
+    by using an Eligibility Decision, though. 
 
     Example:
         name: "Eligibility for automatic sealing"
@@ -66,13 +70,17 @@ class RecordEligibilityDecision(Decision):
         reasoning:
 
     """
-
-    pass
-
+    def __init__(self, *args, **kwargs):
+        self.type = "Eligibility"
+        super().__init__(*args, **kwargs)
 
 class FilterDecision(Decision):
     """
-    A Decision where where the 'value' is cases that have been filtered out of a CRecord because they meet some criteria.
+    A Decision where where the 'value' is cases/charges that have been filtered out of a CRecord because they meet some criteria.
+    The remaining cases and charges are passed along out of the decision. 
     """
 
-    pass
+    def __init__(self, *args, **kwargs):
+        self.type = "Filter"
+        super().__init__(*args, **kwargs)
+

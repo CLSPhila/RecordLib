@@ -16,11 +16,16 @@ import { pickBy, pick } from "lodash";
 import { makeStyles } from "@material-ui/core/styles";
 
 const useStyles = makeStyles((theme) => {
-  root: {
-    input: {
-      paddingRight: theme.spacing(2);
-    }
-  }
+  return {
+    root: {
+      input: {
+        paddingRight: theme.spacing(2),
+      },
+    },
+    textArea: {
+      width: "80%",
+    },
+  };
 });
 
 /**
@@ -270,14 +275,15 @@ export const EditPetitionForm = (props) => {
         </div>
         <h4>Messages</h4>
         <div>
-          <InputLabel for="ifp_message">IFP Message</InputLabel>
+          <InputLabel htmlFor="ifp_message">IFP Message</InputLabel>
           <TextAreaAutosize
             id="ifp_message"
             label="IFP Message"
             value={ifp_message || ""}
             onChange={handleSetIFPMessage}
+            className={classes.textArea}
           />
-          <InputLabel for="include_crim_hist_report">
+          <InputLabel htmlFor="include_crim_hist_report">
             Criminal History Report Message
           </InputLabel>
           <TextAreaAutosize
@@ -285,8 +291,9 @@ export const EditPetitionForm = (props) => {
             label="Crim. Hist. report included message?"
             value={include_crim_hist_report || ""}
             onChange={handleSetCrimHistReport}
+            className={classes.textArea}
           />
-          <InputLabel for="expungement_reasons">
+          <InputLabel htmlFor="expungement_reasons">
             Reasons for expungement
           </InputLabel>
           <TextAreaAutosize
@@ -294,6 +301,7 @@ export const EditPetitionForm = (props) => {
             label="Expungement Reasons"
             value={expungement_reasons || ""}
             onChange={handleSetExpungementReasons}
+            className={classes.textArea}
           />
         </div>
         <h4>Cases</h4>

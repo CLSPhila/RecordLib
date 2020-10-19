@@ -63,7 +63,6 @@ export function analyzeCRecord() {
     }
     const normalizedData = { entities: crecord, result: CRECORD_ID };
     const denormalizedCRecord = denormalizeCRecord(normalizedData);
-    console.log(denormalizedCRecord);
     const applicantInfo = getState().applicantInfo;
     const person = Object.assign({}, applicantInfo.applicant, {
       aliases: applicantInfo.applicant.aliases.map(
@@ -92,17 +91,22 @@ export function analyzeCRecord() {
           atty.organization
         } and that I am providing free legal service to Petitioner.`;
 
+        // Go through the analysis from the server. Each element is a Decision.
+        // For each Decision that describes Petitions to create (i.e., PetitionDecisions),
+        // dispatch an action to create that Petition in State.
         analysis.decisions.forEach((decision) =>
-          decision.value.forEach((petition) => {
-            dispatch(
-              newPetition(
-                merge({}, petition, {
-                  attorney: atty,
-                  ifp_message: defaultIFPMessage,
-                })
-              )
-            );
-          })
+          decision.type === "Petition"
+            ? decision.value.forEach((petition) => {
+                dispatch(
+                  newPetition(
+                    merge({}, petition, {
+                      attorney: atty,
+                      ifp_message: defaultIFPMessage,
+                    })
+                  )
+                );
+              })
+            : null
         );
       })
       .catch((err) => {

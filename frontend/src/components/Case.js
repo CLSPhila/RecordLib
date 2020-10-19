@@ -63,16 +63,14 @@ function Case(props) {
       <div></div>
       <Charges caseId={id} charges={charges} editing={false} />
       {related_cases ? (
-        related_cases.map((docket_num) => {
-          return (
-            <div>
-              <div>Related cases:</div>
-              <ul>
-                <li>{docket_num}</li>
-              </ul>
-            </div>
-          );
-        })
+        <div>
+          <div> Related Cases:</div>
+          <ul>
+            {related_cases.map((docket_num, idx) => {
+              return <li key={idx}>{docket_num}</li>;
+            })}
+          </ul>
+        </div>
       ) : (
         <></>
       )}
