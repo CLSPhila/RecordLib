@@ -13,6 +13,7 @@ function Charge(props) {
     statute,
     disposition,
     disposition_date,
+    sequence,
     sentences,
   } = charge;
   const chargeStyle = {
@@ -27,6 +28,7 @@ function Charge(props) {
 
   return (
     <div className="charge" id={id} style={chargeStyle}>
+      <div>Sequence Number: {sequence}</div>
       <div>Offense: {offense}</div>
       <div>Grade: {grade}</div>
       <div>Statute: {statute}</div>
