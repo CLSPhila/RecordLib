@@ -134,6 +134,7 @@ def integrate_dockets(
             # If we reach this line, the parse succeeded.
             docket_source_record.parse_status = SourceRecord.ParseStatuses.SUCCESS
             # Integrate this docket with the full crecord.
+            breakpoint()
             crecord.add_sourcerecord(
                 rlsource,
                 override_person=True,

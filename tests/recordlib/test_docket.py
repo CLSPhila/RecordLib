@@ -126,7 +126,7 @@ def test_regex_cp_parser(caplog):
         pytest.fail(f"Only {successes}/{total_dockets} parsed.")
 
 
-def test_mdj_docker_parse_sequence_numbers():
+def test_mdj_docket_parse_sequence_numbers():
     path = os.path.join("tests", "data", "dockets")
     files = os.listdir(path)
     mdj_dockets = list(filter(lambda f: "MJ" in f, files))
@@ -137,6 +137,24 @@ def test_mdj_docker_parse_sequence_numbers():
     for f in mdj_dockets:
         try:
             sr = SourceRecord(os.path.join(path, f), parser=parse_mdj_pdf)
+            for case in sr.cases:
+                for charge in case.charges:
+                    assert charge.sequence is not None
+        except Exception as e:
+            pytest.fail(str(e))
+
+
+def test_cp_docket_parse_sequence_numbers():
+    path = os.path.join("tests", "data", "dockets")
+    files = os.listdir(path)
+    mdj_dockets = list(filter(lambda f: "CP" in f, files))
+    if len(mdj_dockets) == 0:
+        pytest.fail(
+            "You need CP dockets named like CP-........pdf for this test to be able to execute."
+        )
+    for f in mdj_dockets:
+        try:
+            sr = SourceRecord(os.path.join(path, f), parser=re_parse_cp_pdf)
             for case in sr.cases:
                 for charge in case.charges:
                     assert charge.sequence is not None

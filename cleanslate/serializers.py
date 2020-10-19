@@ -75,6 +75,9 @@ class ChargeSerializer(S.Serializer):
     )
     disposition_date = S.DateField(required=False, allow_null=True)
     sentences = SentenceSerializer(many=True, allow_empty=True)
+    sequence = S.CharField(
+        required=False, allow_blank=True, default="", allow_null=True
+    )
 
 
 class CaseSerializer(S.Serializer):
