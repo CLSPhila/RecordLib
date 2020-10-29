@@ -30,7 +30,7 @@ def is_charge_autosealable(
 
     """
     dec = Decision(
-        f"Is the charge for '{charge.offense}' in {case.docket_number} auto-sealable?"
+        f"Is the charge {charge.sequence} for '{charge.offense.strip()}' in {case.docket_number} auto-sealable?"
     )
     dec.reasoning = []
     dec.reasoning.append(
@@ -86,7 +86,6 @@ def autosealing_eligibility(
         sealable_case = case.partialcopy()
         unsealable_case = case.partialcopy()
         decision.reasoning[case.docket_number] = []
-
         for charge in case.charges:
             charge_is_sealable = is_charge_autosealable(
                 charge, case, crecord, no_outstanding_fines_costs, record_not_excluded

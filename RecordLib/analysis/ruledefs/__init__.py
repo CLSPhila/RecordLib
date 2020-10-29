@@ -25,3 +25,5 @@ from .simple_expungement_rules import (
 from .simple_sealing_rules import *
 
 from .filter_rules import filter_traffic_cases
+
+from .autosealing_rules import autosealing_eligibility

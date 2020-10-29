@@ -50,7 +50,7 @@ def arrest_free_for_n_years(crec: CRecord, year_min=5) -> Decision:
     return Decision(
         name=f"Has {crec.person.first_name} been arrest free and prosecution free for five years?",
         value=crec.years_since_last_arrested_or_prosecuted() > year_min,
-        reasoning=f"It has been {crec.years_since_last_arrested_or_prosecuted()} since the last arrest or prosecection.",
+        reasoning=f"It appears to have been {crec.years_since_last_arrested_or_prosecuted()} since the last arrest or prosecection.",
     )
 
 
@@ -66,12 +66,12 @@ def is_conviction(charge: Charge) -> Decision:
 
     if charge.disposition is None or charge.disposition.strip() == "":
         return Decision(
-            name=f"Is this charge for {charge.offense} a conviction?",
+            name=f"Is charge {charge.sequence}, for {charge.offense}, a conviction?",
             value=None,
             reasoning="The charge is missing a disposition, so this case may not be closed (it may have simply been transferred).",
         )
     return Decision(
-        name=f"Is this charge for {charge.offense} a conviction?",
+        name=f"Is charge {charge.sequence} for {charge.offense} a conviction?",
         value=charge.is_conviction(),
         reasoning=f"The charge's disposition {charge.disposition} indicates a conviction"
         if charge.is_conviction()
@@ -81,7 +81,7 @@ def is_conviction(charge: Charge) -> Decision:
 
 def is_summary_conviction(charge: Charge) -> Decision:
     charge_d = Decision(
-        name=f"Is this charge for {charge.offense} a summary conviction?",
+        name=f"Is the charge {charge.sequence} for {charge.offense} a summary conviction?",
         reasoning=[is_summary(charge), is_conviction(charge)],
     )
     charge_d.value = all(charge_d.reasoning)

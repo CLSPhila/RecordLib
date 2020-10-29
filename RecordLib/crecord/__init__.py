@@ -1,7 +1,9 @@
-from .crecord import CRecord
+from .address import Address
 from .attorney import Attorney
-from .case import Case
 from .person import Person
-from .common import (
-    Sentence, SentenceLength, Charge, Address
-)
+from .common import Sentence, SentenceLength
+
+from .charge import Charge
+from .case import Case
+from .crecord import CRecord
+

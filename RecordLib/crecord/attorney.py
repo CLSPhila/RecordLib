@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from .common import Address
+from RecordLib.crecord import Address
 
 
 @dataclass

@@ -16,8 +16,10 @@ RecordLib/analysis/ruledefs/petition_rules.py
 RecordLib/analysis/ruledefs/simple_expungement_rules.py
 RecordLib/analysis/ruledefs/simple_sealing_rules.py
 RecordLib/crecord/__init__.py
+RecordLib/crecord/address.py
 RecordLib/crecord/attorney.py
 RecordLib/crecord/case.py
+RecordLib/crecord/charge.py
 RecordLib/crecord/common.py
 RecordLib/crecord/crecord.py
 RecordLib/crecord/helpers.py

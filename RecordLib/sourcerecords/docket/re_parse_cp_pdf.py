@@ -224,7 +224,7 @@ def parse_charges_section(txt: str) -> Tuple[dict, List[str]]:
         col_dict = dict()
         col_dict["sequence"] = {
             "idx": find_index_for_pattern("Seq.", header_line),
-            "fmt": int,
+            "fmt": str,
         }
         col_dict["grade"] = {
             "idx": find_index_for_pattern("Grade", header_line),
@@ -296,7 +296,7 @@ def parse_disposition_section(
                     )
                     idx_copy += 1
                 try:
-                    sequence = int(charge_line_search.group("sequence").strip())
+                    sequence = charge_line_search.group("sequence").strip()
                 except Exception:
                     sequence = None
                 charge = Charge(

@@ -1,7 +1,7 @@
 from typing import Dict, Set, List, Tuple
 from RecordLib.crecord import Case
 from RecordLib.petitions import Petition
-from RecordLib.analysis import Analysis
+from RecordLib.analysis import Analysis, summarize
 from RecordLib.analysis.ruledefs import simple_sealing_rules as ssr
 from mako.lookup import TemplateLookup
 from mako.template import Template
@@ -34,7 +34,7 @@ class EmailBuilder:
         from_email = Email("cleanslatescreener@clsphila.org")
         to_email = To(to_address)
         subject = "Test of Clean Slate Analysis."
-        content = Content("text/html", self.html())
+        content = Content("text/html", self.html_summary())
         mail = Mail(from_email, to_email, subject, content)
         response = sg.client.mail.send.post(request_body=mail.get())
         print(response.status_code)
@@ -109,18 +109,19 @@ class EmailBuilder:
         pass
 
     def caseExist(self, case, cases) -> bool:
-        result = False;
+        result = False
         for c in cases:
-            if(c.docket_number == case.docket_number):
-                result = True;
-                break;
-        return result;
+            if c.docket_number == case.docket_number:
+                result = True
+                break
+        return result
+
     def petionDetails(self, case, petitions):
         for petition_type in petitions:
             for petition in petition_type.value:
-                if(petition.cases[0].docket_number == case.docket_number):
+                if petition.cases[0].docket_number == case.docket_number:
                     return petition_type.name
-        return "";
+        return ""
 
     def get_unsealable_until_date(self, case) -> List:
         """
@@ -182,8 +183,45 @@ class EmailBuilder:
         except:
             return {"error": "Something went wrong with the search."}
 
+    def were_traffic_court_cases(self):
+        """
+        True if there were traffic court cases filtered out of the record.
+        """
+        traffic_cases = [
+            d.value
+            for d in self.analysis.decisions
+            if d.name == "Traffic Court cases removed from consideration."
+        ]
+        if len(traffic_cases) > 0:
+            return True
+        return False
+
+    def html_summary(self) -> str:
+        """
+        return an html-formatted string summarizing an analysis. 
+        
+        This method uses a summary dictionary from analysis.py 
+        
+        """
+        mylookup = TemplateLookup(
+            directories=[os.environ["EMAIL_TEMPLATE_DIR"]],
+            module_directory=os.environ["MAKO_MODULE_DIR"],
+        )
+        if len(self.sourcerecords) > 0:
+            base_template = mylookup.get_template("summarize_record.html")
+        else:
+            base_template = mylookup.get_template("did_not_find_record.html")
+        summary, errs = summarize(self.analysis)
+        return base_template.render(
+            search_details=self.get_search_details(),
+            there_were_traffic_cases=self.were_traffic_court_cases(),
+            summary=summary,
+            analysis=self.analysis,
+        )
+
     def html(self) -> str:
         """
+        IN THE PROCESS OF DEPRECATING
         Return an html-formatted string that describes the analysis.
         """
         mylookup = TemplateLookup(
@@ -203,6 +241,6 @@ class EmailBuilder:
             get_unsealable_until_date=self.get_unsealable_until_date,
             search_details=self.get_search_details(),
             caseExist=self.caseExist,
-            petionDetails=self.petionDetails
+            petionDetails=self.petionDetails,
         )
 

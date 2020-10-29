@@ -9,19 +9,25 @@ from typing import Union
 from datetime import date, datetime, timedelta
 from lxml import etree
 from lxml.etree import _ElementTree
-from RecordLib.crecord import Charge, Sentence, SentenceLength, Address
-from RecordLib.crecord import Person
-from RecordLib.crecord import Case
-from RecordLib.analysis import Analysis
+
+from RecordLib.crecord import (
+    CRecord,
+    Attorney,
+    Charge,
+    Sentence,
+    SentenceLength,
+    Address,
+    Person,
+    Case,
+)
 from RecordLib.petitions import Expungement, Sealing
 from RecordLib.analysis import (
+    Analysis,
     Decision,
     RecordEligibilityDecision,
     PetitionDecision,
     FilterDecision,
 )
-from RecordLib.crecord import CRecord
-from RecordLib.crecord import Attorney
 from RecordLib.sourcerecords import Docket, Summary, SourceRecord
 
 

@@ -109,64 +109,55 @@ def expunge_summary_convictions(crecord: CRecord) -> Tuple[CRecord, PetitionDeci
     """
     # Initialize the decision explaining this rule's outcome. It starts with reasoning that includes the
     # decisions that are conditions of any case being expungeable.
+    arrest_free = ser.arrest_free_for_n_years(crecord)
     conclusion = PetitionDecision(
-        name="Expungements for summary convictions.",
-        value=[],
-        reasoning=[ser.arrest_free_for_n_years(crecord)],
+        name="Expungements for summary convictions.", value=[], reasoning=[arrest_free],
     )
 
     # initialize a blank crecord to hold the cases and charges that can't be expunged under this rule.
     remaining_record = CRecord(person=crecord.person)
-    if all(conclusion.reasoning) and len(crecord.cases) > 0:
-        for case in crecord.cases:
-            # Find expungeable charges in a case. Save a Decision explaining what's
-            # expungeable to
-            # the reasoning of the Decision about the whole record.
-            case_d = Decision(
-                name=f"Is {case.docket_number} expungeable?", reasoning=[]
+    for case in crecord.cases:
+        # Find expungeable charges in a case. Save a Decision explaining what's
+        # expungeable to
+        # the reasoning of the Decision about the whole record.
+        case_d = Decision(name=f"Is {case.docket_number} expungeable?", reasoning=[])
+        expungeable_case = (
+            case.partialcopy()
+        )  # The charges in this case that are expungeable.
+        not_expungeable_case = (
+            case.partialcopy()
+        )  # Charges in this case that are not expungeable.
+
+        for charge in case.charges:
+            charge_d = ser.is_summary_conviction(charge)
+            if arrest_free and all(charge_d.reasoning):
+                expungeable_case.charges.append(charge)
+                charge_d.value = True
+            else:
+                charge_d.value = False
+                not_expungeable_case.charges.append(charge)
+            case_d.reasoning.append(charge_d)
+
+        # If there are any expungeable charges, add an Expungepent to the Value of the decision about
+        # this whole record.
+        if len(expungeable_case.charges) > 0:
+            case_d.value = True
+            exp = Expungement(
+                client=crecord.person,
+                cases=[expungeable_case],
+                expungement_reasons=".  The petitioner has been arrest free for more than five years since this summary conviction",
             )
-            expungeable_case = (
-                case.partialcopy()
-            )  # The charges in this case that are expungeable.
-            not_expungeable_case = (
-                case.partialcopy()
-            )  # Charges in this case that are not expungeable.
-            for charge in case.charges:
-                charge_d = ser.is_summary_conviction(charge)
-                if all(charge_d.reasoning):
-                    expungeable_case.charges.append(charge)
-                    charge_d.value = True
-                else:
-                    charge_d.value = False
-                    not_expungeable_case.charges.append(charge)
-                case_d.reasoning.append(charge_d)
+            if len(expungeable_case.charges) == len(case.charges):
+                exp.expungement_type = Expungement.ExpungementTypes.FULL_EXPUNGEMENT
+            else:
+                exp.expungement_type = Expungement.ExpungementTypes.PARTIAL_EXPUNGEMENT
+            conclusion.value.append(exp)
 
-            # If there are any expungeable charges, add an Expungepent to the Value of the decision about
-            # this whole record.
-            if len(expungeable_case.charges) > 0:
-                case_d.value = True
-                exp = Expungement(
-                    client=crecord.person,
-                    cases=[expungeable_case],
-                    expungement_reasons=".  The petitioner has been arrest free for more than five years since this summary conviction",
-                )
-                if len(expungeable_case.charges) == len(case.charges):
-                    exp.expungement_type = Expungement.ExpungementTypes.FULL_EXPUNGEMENT
-                else:
-                    exp.expungement_type = (
-                        Expungement.ExpungementTypes.PARTIAL_EXPUNGEMENT
-                    )
-                conclusion.value.append(exp)
-
-            if len(not_expungeable_case.charges) > 0:
-                case_d.value = False
-                remaining_record.cases.append(not_expungeable_case)
+        if len(not_expungeable_case.charges) > 0:
+            case_d.value = False
+            remaining_record.cases.append(not_expungeable_case)
         conclusion.reasoning.append(case_d)
 
-    else:
-        # The global requirements for expunging anything on this record weren't met, so nothing can be
-        # expunged.
-        remaining_record.cases = crecord.cases
     return remaining_record, conclusion
 
 
@@ -239,7 +230,6 @@ def seal_convictions(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]:
 
     TODO Paragraph (b)(1) provides conditions that exclude convictions from sealing.
 
-    TODO Replace this with the simple_sealing_rule about the full_record_sealing requirements.
     """
     conclusion = Decision(
         name="Sealing some convictions under the Clean Slate reforms.",
@@ -258,7 +248,7 @@ def seal_convictions(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]:
                 name=f"Sealing case {case.docket_number}", reasoning=[]
             )
             fines_decision = ssr.fines_and_costs_paid(case)  # 18 Pa.C.S. 9122.1(a)
-            case_decision.reasoning.append(fines_decision)
+            # case_decision.reasoning.append(fines_decision)
             # create copies of a case that don't include any charges.
             # sealable or unsealable charges will be added to these.
             sealable_parts_of_case = case.partialcopy()
@@ -268,10 +258,13 @@ def seal_convictions(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]:
             charge_decisions = []
             for charge in case.charges:
                 # The sealability of each charge is its own Decision.
-                charge_decision = Decision(name=f"Sealing charge {charge.offense}")
+                charge_decision = Decision(
+                    name=f"Sealing charge {charge.sequence}, {charge.offense}"
+                )
                 # Conditions that determine whether this charge is sealable
                 #  See 91 Pa.C.S. 9122.1(b)(1)
                 charge_decision.reasoning = [
+                    fines_decision,
                     ssr.is_misdemeanor_or_ungraded(charge),
                     ssr.no_danger_to_person_offense(
                         charge,

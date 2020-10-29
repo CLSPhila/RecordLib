@@ -28,6 +28,7 @@ def test_partial_seal(example_crecord):
     example_crecord.cases[0].total_fines = 0
     example_crecord.cases[0].disposition_date = date(1990, 1, 1)
     example_crecord.cases[0].charges[0] = Charge(
+        sequence="2",
         offense="Being silly",
         grade="M1",
         disposition="Guilty",
@@ -36,6 +37,7 @@ def test_partial_seal(example_crecord):
         sentences=[],
     )
     new_charge = Charge(
+        sequence="1",
         offense="Overzealous puzzle-assembling, using a firearm",
         grade="S",
         disposition="Guilty",
@@ -43,6 +45,7 @@ def test_partial_seal(example_crecord):
         sentences=[],
     )
     example_crecord.cases[0].charges.append(new_charge)
+    # the new_charge shouldn't be sealable.
     mod_rec, analysis = seal_convictions(example_crecord)
     assert "puzzle-assembling" in mod_rec.cases[0].charges[0].offense
     petition = analysis.value[0]
@@ -284,16 +287,16 @@ def test_no_corruption_of_minors_offense(example_charge):
 def test_no_sexual_offense(example_crecord, example_charge):
     example_crecord.cases[0].charges[0].statute = "18 § 2901(a.1)"
     example_crecord.cases[0].charges[0].disposition_date = date(2019, 1, 1)
-    d = no_sexual_offense(
+    dec = no_sexual_offense(
         example_crecord, penalty_limit=20, conviction_limit=1, within_years=20
     )
-    assert bool(d) is False
+    assert bool(dec) is False  # 2901a.1 _is_ a sexual offense.
 
     example_charge.statute = "18 § 1201.1"
-    d = no_sexual_offense(
+    dec = no_sexual_offense(
         example_charge, penalty_limit=20, conviction_limit=1, within_years=20
     )
-    assert bool(d) is True
+    assert bool(dec) is True
 
 
 def test_no_firearms_offense(example_crecord, example_charge):

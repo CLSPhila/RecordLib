@@ -127,6 +127,9 @@ def ten_years_between_convictions(charge, case, crecord, years=10) -> Decision:
     years_between_convictions = crecord.years_between_convictions(case, charge)
     decision.value = years_between_convictions >= years
     decision.reasoning = f"{years_between_convictions} years elapsed after the conviction for {charge.offense} in {case.docket_number}"
+    if bool(decision.value) is False:
+        years_remaining = crecord.years_until_n_years_pass_since_last_conviction(10)
+        decision.reasoning += f" It looks like enough time between convictions for sealing may pass after {years_remaining}."
 
 
 def ten_years_since_last_conviction_for_m_or_f(crecord: CRecord) -> Decision:
@@ -286,7 +289,7 @@ def fines_and_costs_paid(case: Case) -> Decision:
     18 Pa. C.S. § 9122.1(a).
 
     Args:
-        case: a single Case. 
+        case: a single Case.
 
     Returns:
         a Decision indicating if all fines and costs have been paid on the case.
@@ -307,7 +310,7 @@ def fines_and_costs_paid(case: Case) -> Decision:
             decision.reasoning += f"Fines paid is undefined, so we're not sure if this case has any fines paid."
         return decision
 
-    decision.value = (case.total_fines - case.fines_paid) == 0
+    decision.value = (case.total_fines - case.fines_paid) <= 0
     decision.reasoning = f"The case's total fines are {case.total_fines}, of which {case.fines_paid} has been paid."
     return decision
 
@@ -675,7 +678,7 @@ def no_sexual_offense(
         # item is a CRecord
         decision = Decision(
             name=(
-                f"Not convicted within {within_years} more than {conviction_limit} times "
+                f"Not convicted more than {conviction_limit} times, within {within_years} years,"
                 + f"of certain sexual or registration-related offenses punishable by {penalty_limit} years"
             ),
             reasoning=[

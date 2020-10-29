@@ -1,12 +1,10 @@
 from __future__ import annotations
-from dataclasses import asdict
-from .common import Charge, Sentence
-from .person import Person
 from typing import List, Optional
-from datetime import date, datetime
 import logging
+from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
-from .helpers import convert_datestring
+from RecordLib.crecord import Charge
+from RecordLib.crecord.helpers import convert_datestring
 
 
 class Case:

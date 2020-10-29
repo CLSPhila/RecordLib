@@ -1,3 +1,3 @@
-from .docket.docket import Docket
-from .summary.summary import Summary
+from RecordLib.sourcerecords.docket import Docket
+from RecordLib.sourcerecords.summary import Summary
 from .sourcerecord import SourceRecord

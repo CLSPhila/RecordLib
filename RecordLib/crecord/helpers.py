@@ -21,3 +21,13 @@ def convert_datestring(datestring: Union[str, date, datetime, None]) -> date:
     logger.error(f"Could not read date string: {datestring}")
     return None
 
+
+def date_or_none(date_text: str, fmtstr: str = r"%m/%d/%Y") -> datetime:
+    """
+    Return date or None given a string.
+    """
+    try:
+        return datetime.strptime(date_text.strip(), fmtstr).date()
+    except (ValueError, AttributeError):
+        return None
+

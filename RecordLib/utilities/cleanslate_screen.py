@@ -47,7 +47,9 @@ def communicate_results(
         logger.info(f"    Analysis written to {output_json_path}.")
     if output_html_path is not None:
         with open(output_html_path, "w") as f:
-            html_message = message_builder.html()
+            html_message = (
+                message_builder.html_summary()
+            )  # html() for the original non-summary version, which is deprecated.
             f.write(html_message)
     if email_address is not None:
         message_builder.email(email_address)
@@ -80,7 +82,7 @@ def by_name(
     if output_dir is not None and not os.path.exists(output_dir):
         raise (ValueError(f"Directory {output_dir} does not exist."))
 
-    search_results = search_by_name(first_name, last_name, dob)
+    search_results, errs = search_by_name(first_name, last_name, dob)
     search_results = search_results["MDJ"] + search_results["CP"]
     logger.info(f"    Found {len(search_results)} cases in the Portal.")
     # Download the source records

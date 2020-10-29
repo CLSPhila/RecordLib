@@ -4,4 +4,4 @@ from .decision import (
     PetitionDecision,
     FilterDecision,
 )
-from .analysis import Analysis
+from .analysis import Analysis, summarize

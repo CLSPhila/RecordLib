@@ -12,9 +12,7 @@ import re
 from dataclasses import asdict
 from datetime import date
 from dateutil.relativedelta import relativedelta
-from .person import Person
-from .case import Case
-from .common import Charge
+from RecordLib.crecord import Person, Case, Charge
 
 
 def years_between_convictions(crecord: CRecord, case: Case, charge: Charge) -> int:
@@ -22,14 +20,14 @@ def years_between_convictions(crecord: CRecord, case: Case, charge: Charge) -> i
     How many years elapsed between the conviction `charge` in `case`, and the next conviction?
     """
     convictions_only = []
-    for case in crecord.cases:
+    for check_case in crecord.cases:
         append = False
-        for charge2 in case.charges:
+        for charge2 in check_case.charges:
             if charge2.is_conviction():
                 append = True
                 break
         if append:
-            convictions_only.append(case)
+            convictions_only.append(check_case)
 
     convictions_sorted = sorted(convictions_only, key=Case.order_cases_by_last_action)
     start_date = charge.disposition_date or case.disposition_date
@@ -66,6 +64,36 @@ def years_since_last_arrested_or_prosecuted(crecord: CRecord) -> int:
         return relativedelta(date.today(), last_case.last_action()).years
     except (ValueError, TypeError):
         return 0
+
+
+def years_until_n_years_pass_since_last_conviction(crecord, n=10) -> str:
+    if crecord.cases is None:
+        return "0 years"
+    if len(crecord.cases) is None:
+        return "0 years"
+    if any(
+        ["Active" in case.status for case in crecord.cases if case.status is not None]
+    ):
+        return "at least 10 years"
+    convictions_only = []
+    for check_case in crecord.cases:
+        append = False
+        for charge2 in check_case.charges:
+            if charge2.is_conviction():
+                append = True
+                break
+        if append:
+            convictions_only.append(check_case)
+
+    convictions_sorted = sorted(convictions_only, key=Case.order_cases_by_last_action)
+    last_case = convictions_sorted[-1]
+    try:
+        time_since_last_action = relativedelta(
+            date.today(), last_case.last_action()
+        ).years
+        return f"{max(0, n - time_since_last_action)} years"
+    except (ValueError, TypeError):
+        return "an unknown number of years"
 
 
 def years_since_final_release(crecord: CRecord) -> int:
@@ -120,6 +148,9 @@ class CRecord:
 
     years_since_final_release = years_since_final_release
     years_between_convictions = years_between_convictions
+    years_until_n_years_pass_since_last_conviction = (
+        years_until_n_years_pass_since_last_conviction
+    )
 
     def __init__(self, person: Person = None, cases: List[Case] = None):
         self.person = person

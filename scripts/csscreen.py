@@ -4,18 +4,13 @@ Command-line interface for conducting an automated screening of a record.
 from __future__ import annotations
 from typing import List
 from datetime import datetime
-import tempfile
 import os
-import re
 import json
 import logging
-import shutil
-import requests
-import click
 from csv import DictReader
-from ujs_search.services.searchujs import search_by_docket, search_by_name
+import click
 from RecordLib.utilities.serializers import to_serializable
-from RecordLib.crecord import CRecord, Person
+from RecordLib.crecord import CRecord
 from RecordLib.sourcerecords import SourceRecord
 from RecordLib.sourcerecords.docket.re_parse_cp_pdf import parse_cp_pdf_text
 from RecordLib.sourcerecords.docket.re_parse_mdj_pdf import parse_mdj_pdf_text
@@ -30,6 +25,12 @@ logger = logging.getLogger(__name__)
 
 
 def pick_pdf_parser(docket_num):
+    """
+    Choose the appropriate parser function to use, based on a docket number.
+    
+    For example, if the docket number is CP-12-CR-12345-2010, the common pleas parser would
+    be the right choice.
+    """
     if "CP" in docket_num or "MC" in docket_num:
         parser = parse_cp_pdf_text
     elif "MJ" in docket_num:
@@ -119,7 +120,7 @@ def __name(
     #    if output_dir is not None and not os.path.exists(output_dir):
     #        raise (ValueError(f"Directory {output_dir} does not exist."))
     logger.setLevel(log_level)
-    click.echo(f"Screening {last_name}, {first_name}")
+    click.echo(f"Screening {last_name}, {first_name}, {dob}")
     starttime = datetime.now()
     dob = datetime.strptime(dob, date_format).date()
     by_name(first_name, last_name, dob, email, output_dir, output_json, output_html)
@@ -190,11 +191,14 @@ def check_exists(path):
     "--num",
     "-n",
     help="Number (from top of file) to screen",
-    default=None,
+    default=float("Inf"),
     required=False,
-    type=int,
+    type=float,
 )
-def csv(input_data: str, output: str, num: int):
+@click.option(
+    "--skip", "-s", help="Skip the first s rows.", default=0, type=int, required=False
+)
+def csv(input_data: str, output: str, num: int, skip: int):
     """
     Process requests for screenings in a csv file, and write the resulting screening emails into
     a directory. 
@@ -203,20 +207,32 @@ def csv(input_data: str, output: str, num: int):
     """
     check_exists(input_data)
     check_exists(output)
-    counter = 0
+    skip_counter = 0
+    collect_counter = 0
     toscreen = []
+    click.echo(f"Screening names from {input_data}.")
+    click.echo(f"  Skipping the first {skip} rows.")
+
     with open(input_data, "r") as f:
         reader = DictReader(f)
         for row in reader:
+            if skip_counter < skip:
+                skip_counter += 1
+                continue
+            if collect_counter >= num:
+                break
             first_name = row["first_name"]
             last_name = row["last_name"]
             dob = row["dob"]
             # the data seems to have lots of duplicates, so lets remove those to avoid screening the same person multiple times.
             to_add = (first_name, last_name, dob)
             if to_add not in toscreen:
+                collect_counter += 1
                 toscreen.append(to_add)
 
+        click.echo(f"  There are {len(toscreen)} unique names to screen")
         for (first_name, last_name, dob) in toscreen:
+
             __name(
                 first_name,
                 last_name,
@@ -228,8 +244,4 @@ def csv(input_data: str, output: str, num: int):
                 email=None,
                 log_level="INFO",
             )
-            if num:
-                counter += 1
-                if counter >= num:
-                    break
 

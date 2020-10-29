@@ -84,10 +84,11 @@ def example_sentence(example_sentencelength):
 @pytest.fixture
 def example_charge(example_sentence):
     return Charge(
-        "Eating w/ mouth open",
-        "M2",
-        "14 section 23",
-        "Guilty Plea",
+        offense="Eating w/ mouth open",
+        grade="M2",
+        statute="14 section 23",
+        disposition="Guilty Plea",
+        sequence="1",
         disposition_date=date(2010, 1, 1),
         sentences=[example_sentence],
     )

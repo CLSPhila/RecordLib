@@ -158,7 +158,15 @@ def parse_mdj_pdf_text(txt: str) -> Tuple[Person, List[Case], List[str]]:
             charge_info["statute"] = m.group(2)
             charge_info["grade"] = m.group(4)
             charge_info["offense"] = m.group(5)
-            charge_info["disposition"] = m.group(6)
+            if (
+                m.group(6)
+                and m.group(6).strip() != ""
+                and case_info.get("arrest_date") is not None
+            ):
+                # Use this line's 'offense date' to fill in the case arrest date, if we haven't already figured
+                # out the arrest date.
+                case_info["arrest_date"] = m.group(6)
+            charge_info["disposition"] = m.group(7)
             m2 = PATTERNS.charges_search_overflow.search(lines[idx + 1])
             if m2:
                 charge_info[

@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Union, List
+from RecordLib.crecord import Case
 
 
 class Decision:
@@ -45,6 +46,15 @@ class PetitionDecision(Decision):
         self.type = "Petition"
         super().__init__(*args, **kwargs)
 
+    def get_cases(self) -> [Case]:
+        """
+        Each PetitionDecision selects cases for expunging or sealing with a petition. Get those cases.
+
+        This method exists so there's a consistent way to get cases from different types of petitions.
+        """
+        return [case for petitions in self.value for case in petitions]
+
+
 class RecordEligibilityDecision(Decision):
     """
     A Decision where the 'value' is a dict of decisions about whether a record and its cases and charges are eligible for sealing or expungement 
@@ -70,9 +80,19 @@ class RecordEligibilityDecision(Decision):
         reasoning:
 
     """
+
     def __init__(self, *args, **kwargs):
         self.type = "Eligibility"
         super().__init__(*args, **kwargs)
+
+    def get_cases(self) -> [Case]:
+        """
+        Return the list of cases this Decision found to be eligible under this rule. 
+
+        This method exists so there's a consistent way to get cases from different types of petitions.
+        """
+        return self.value["eligible"]
+
 
 class FilterDecision(Decision):
     """
@@ -83,4 +103,12 @@ class FilterDecision(Decision):
     def __init__(self, *args, **kwargs):
         self.type = "Filter"
         super().__init__(*args, **kwargs)
+
+    def get_cases(self) -> [Case]:
+        """
+        Return the list of cases filtered out of the crecord under this rule.
+
+        This method exists so there's a consistent way to get cases from different types of petitions.
+        """
+        return self.value
 
