@@ -1,8 +1,9 @@
-from RecordLib.crecord.common import *
+from RecordLib.crecord.common import Sentence, SentenceLength
 from dataclasses import asdict
 from datetime import date, timedelta
 import pytest
 from RecordLib.utilities.serializers import to_serializable
+from RecordLib.crecord.charge import Charge
 
 
 def test_sentence():

@@ -35,7 +35,7 @@ export function searchUJSByName(first_name, last_name, date_of_birth) {
       .searchUJSByName(first_name, last_name, date_of_birth)
       .then((response) => {
         const data = response.data;
-        if (data.errors) {
+        if (data.errors && data.errors.length > 0 || !data.searchResults) {
           dispatch(searchUSJByNameStatus("error"));
         } else {
           dispatch(searchUSJByNameSuccess(data));
