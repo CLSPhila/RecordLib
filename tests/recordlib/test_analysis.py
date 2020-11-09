@@ -30,5 +30,4 @@ def test_rule_chaining(example_crecord):
 def test_summary(example_crecord):
     ans = Analysis(example_crecord)
     summary = summarize(ans)
-    breakpoint()
     assert True

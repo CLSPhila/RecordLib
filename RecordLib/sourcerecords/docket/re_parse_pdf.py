@@ -19,6 +19,8 @@ def which_court(txt: str) -> str:
         return "CP"
     if re.search("magisterial district", first_lines, re.I):
         return "MDJ"
+    if re.search("municipal", first_lines, re.I):
+        return "MC"
     return ""
 
 
@@ -27,6 +29,8 @@ def re_parse_pdf_text(txt: str) -> Tuple[Person, List[Case], List[str]]:
     if court == "MDJ":
         return re_parse_mdj_pdf_text(txt)
     if court == "CP":
+        return re_parse_cp_pdf_text(txt)
+    if court == "MC":
         return re_parse_cp_pdf_text(txt)
 
 

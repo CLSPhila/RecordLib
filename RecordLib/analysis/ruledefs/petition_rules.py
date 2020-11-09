@@ -171,7 +171,7 @@ def expunge_nonconvictions(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]
             value: [Petition],
             reasoning: [Decision]
     """
-    conclusion = Decision(
+    conclusion = PetitionDecision(
         name="Expungements of nonconvictions.", value=[], reasoning=[]
     )
 
@@ -231,7 +231,7 @@ def seal_convictions(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]:
     TODO Paragraph (b)(1) provides conditions that exclude convictions from sealing.
 
     """
-    conclusion = Decision(
+    conclusion = PetitionDecision(
         name="Sealing some convictions under the Clean Slate reforms.",
         value=[],
         reasoning=[],

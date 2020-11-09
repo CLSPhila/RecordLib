@@ -202,10 +202,12 @@ def source_record_info(a_file):
         file_info.docket_num = docket_numbers[0]
 
     # court
-    if re.search("CP", filename):
+    if re.search("CP", file_info.docket_num):
         file_info.court = SourceRecord.Courts.CP
-    elif re.search("MJ", filename):
+    elif re.search("MJ", file_info.docket_num):
         file_info.court = SourceRecord.Courts.MDJ
+    elif re.search("MC", file_info.docket_num):
+        file_info.court = SourceRecord.Courts.MC
 
     return file_info
 
@@ -239,13 +241,19 @@ class SourceRecord(models.Model):
             return None
 
     class Courts:
-        """ Documents may come from one of these courts. """
+        """ Documents may come from one of these courts. 
+        
+        Common Pleas (CP) (philly), Magisterial District Courts (out of philly), Muncipal (MC) (philly lower court)
+        
+        """
 
         CP = "CP"
         MDJ = "MDJ"
+        MC = "MC"
         __choices__ = [
             ("CP", "CP"),
             ("MDJ", "MDJ"),
+            ("MC", "MC"),
         ]
 
     class RecTypes:
