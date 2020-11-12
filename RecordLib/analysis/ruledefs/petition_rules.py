@@ -219,7 +219,7 @@ def expunge_nonconvictions(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]
 
 def seal_convictions(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]:
     """
-    Pa.C.S. 9122.1 provides for petition-based sealing of records when certain
+    18 Pa.C.S. 9122.1 provides for petition-based sealing of records when certain
     conditions are met.
 
     Paragraph (a) provides a general rule that sealing is available when someone has been free of conviction for 10 years of certain offenses,

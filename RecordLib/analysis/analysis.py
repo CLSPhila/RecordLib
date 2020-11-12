@@ -161,7 +161,7 @@ def set_next_step(summary, docket_number, charge_sequence=None, next_step="") ->
 
 
 def update_summary_for_automated_sealing(summary, decision):
-    charge_patt = re.compile(r"Is the charge (?P<sequence>\w+) for .*")
+    charge_patt = re.compile(r"Is the charge (?P<sequence>\w+(?:,\w+)?) for .*")
 
     for docket_number, case_decision in decision.reasoning.items():
         case_is_clearable = False
@@ -241,7 +241,7 @@ def update_summary_for_nonconviction_expungements(
     dkt_patt = re.compile(
         r"Does (?P<docket_number>.+) have expungeable nonconvictions\?"
     )  # re.compile(r"Is (?P<docket_number>.+) expungeable\?")
-    charge_patt = re.compile(r"Is charge (?P<sequence>\w+), for .*")
+    charge_patt = re.compile(r"Is charge (?P<sequence>\w+(?:,\w+)?), for .*")
     for case_reason in decision.reasoning:
         # this Decision's reasoning is a list of Decisions.
         # The first one is about the whole record,
@@ -258,6 +258,7 @@ def update_summary_for_nonconviction_expungements(
                     # the charge_reason is _false_ if the charge is _not_ a conviction, so its expungeable.
                     charge_match = charge_patt.search(charge_reason.name)
                     sequence_num = charge_match.group("sequence")
+
                     summary = set_next_step(
                         summary,
                         dkt_number,
