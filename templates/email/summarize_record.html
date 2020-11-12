@@ -49,7 +49,7 @@ ${defs.write_search_details()}
         <h4>Charges</h4>
         <ul style="list-style-type: none;">
             % for sequence, charge in case["charges"].items():
-                <li style="padding-bottom:0px;">${charge["offense"]} | ${charge.get("disposition_date", "{Could not determine date}")}</li>
+                <li style="padding-bottom:0px;">${charge["offense"]} | ${charge.get("disposition_date", "{Could not determine date}")} | ${charge.get("grade", "{Could not determine offense grade}")}</li>
                 <li style="padding-bottom:0px;">${charge.get("disposition", "Disposition unknown")}</li>
                 <li style="padding-bottom:6px;">${charge.get("next_steps")}</li>
             % endfor

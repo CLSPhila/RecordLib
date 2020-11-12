@@ -177,6 +177,10 @@ def expunge_nonconvictions(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]
 
     remaining_record = CRecord(person=crecord.person)
     for case in crecord.cases:
+        # Go through each case in the record, and each charge in each case.
+        #   If a charge is a conviction, then it can't be expunged under this rule.
+        #   Add unexpungeable charges and their cases to the remaining record,
+        #   and add expungeable charges to the value of this rule.
         case_d = Decision(
             name=f"Does {case.docket_number} have expungeable nonconvictions?",
             reasoning=[],
@@ -187,6 +191,8 @@ def expunge_nonconvictions(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]
             charge_d = ser.is_conviction(charge)
 
             if bool(charge_d) is False and charge_d.value is not None:
+                # if the charge_d's value is False, then the charge is _not_ a conviction, and hence
+                # _is_ expungeable here.
                 expungeable_case.charges.append(charge)
             else:
                 unexpungeable_case.charges.append(charge)

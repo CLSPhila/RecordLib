@@ -71,7 +71,7 @@ def is_conviction(charge: Charge) -> Decision:
             reasoning="The charge is missing a disposition, so this case may not be closed (it may have simply been transferred).",
         )
     return Decision(
-        name=f"Is charge {charge.sequence} for {charge.offense} a conviction?",
+        name=f"Is charge {charge.sequence}, for {charge.offense}, a conviction?",
         value=charge.is_conviction(),
         reasoning=f"The charge's disposition {charge.disposition} indicates a conviction"
         if charge.is_conviction()

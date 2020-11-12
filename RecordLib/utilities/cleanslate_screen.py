@@ -3,7 +3,7 @@ Automated clean slate screening.
 """
 import logging
 import tempfile
-from typing import List
+from typing import List, Dict, Tuple
 import os
 import re
 import json
@@ -30,9 +30,15 @@ def communicate_results(
     email_address,
     output_json_path: str,
     output_html_path: str,
-) -> None:
+) -> Tuple[Dict, str, Dict]:
     """
     Communicate the results of the record screening.
+
+
+    Returns:
+        Results - a dict describing the source records and analysis in detail
+        html_message - html string summarizing results
+        summary - dict summarizing analysis, which html_message uses.
 
     """
     sources = []
@@ -45,14 +51,13 @@ def communicate_results(
         with open(output_json_path, "w") as f:
             f.write(json.dumps(results, indent=4))
         logger.info(f"    Analysis written to {output_json_path}.")
+    html_message = message_builder.html_summary()
     if output_html_path is not None:
         with open(output_html_path, "w") as f:
-            html_message = (
-                message_builder.html_summary()
-            )  # html() for the original non-summary version, which is deprecated.
             f.write(html_message)
     if email_address is not None:
         message_builder.email(email_address)
+    return results, html_message, message_builder.summary
 
 
 def pick_pdf_parser(docket_num):
@@ -70,13 +75,22 @@ def by_name(
     first_name,
     last_name,
     dob,
-    email,
+    email=None,
     output_dir=None,
     output_json=None,
     output_html=None,
 ):
     """
     Screen a person's public criminal record for charges that can be expunged or sealed.
+
+
+
+    Returns:
+        Results - a dict describing the source records and analysis in detail
+        html_message - html string summarizing results
+        summary - dict summarizing analysis, which html_message uses.
+
+
     """
     # Search UJS for the person's name to collect source records.
     if output_dir is not None and not os.path.exists(output_dir):
@@ -193,5 +207,5 @@ def by_name(
     )
 
     # email the results.
-    communicate_results(sourcerecords, analysis, email, output_json, output_html)
+    return communicate_results(sourcerecords, analysis, email, output_json, output_html)
 

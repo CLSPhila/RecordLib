@@ -91,6 +91,7 @@ def summarize(analysis: Analysis) -> dict:
             summary["cases"][case.docket_number]["charges"][charge.sequence] = {
                 "offense": charge.offense,
                 "is_conviction": charge.is_conviction(),
+                "grade": charge.grade,
                 "disposition": charge.disposition,
                 "disposition_date": charge.disposition_date or case.disposition_date,
                 "next_steps": "",
@@ -237,14 +238,15 @@ def update_summary_for_deceased_expungements(
 def update_summary_for_nonconviction_expungements(
     summary: dict, decision: "PetitionDecision"
 ) -> dict:
-    dkt_patt = re.compile(r"Is (?P<docket_number>.+) expungeable\?")
+    dkt_patt = re.compile(
+        r"Does (?P<docket_number>.+) have expungeable nonconvictions\?"
+    )  # re.compile(r"Is (?P<docket_number>.+) expungeable\?")
     charge_patt = re.compile(r"Is charge (?P<sequence>\w+), for .*")
     for case_reason in decision.reasoning:
         # this Decision's reasoning is a list of Decisions.
         # The first one is about the whole record,
         # and the rest are each about each specific case.
         case_is_clearable = False
-
         dkt_search = dkt_patt.search(case_reason.name)
         if dkt_search:
             dkt_number = dkt_search.group("docket_number")
@@ -252,7 +254,8 @@ def update_summary_for_nonconviction_expungements(
             for charge_reason in case_reason.reasoning:
                 # the reasoning of the case_reasoning decision is
                 # a list of decisions about each charge on the case.
-                if bool(charge_reason):
+                if bool(charge_reason) is False:
+                    # the charge_reason is _false_ if the charge is _not_ a conviction, so its expungeable.
                     charge_match = charge_patt.search(charge_reason.name)
                     sequence_num = charge_match.group("sequence")
                     summary = set_next_step(
@@ -283,7 +286,7 @@ def update_summary_for_sealing_convictions(
 
         if case_decision.value == "All charges sealable":
             summary = set_next_step(
-                summary, docket_number, next_step="Case likely sealable by petition. "
+                summary, docket_number, next_step="Case likely sealable by petition. ",
             )
             summary["clearable_cases"] += 1
             summary["clearable_charges"] += len(case_decision.reasoning)

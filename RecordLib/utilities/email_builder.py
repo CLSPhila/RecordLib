@@ -27,6 +27,8 @@ class EmailBuilder:
         self.analysis = analysis
         self.counties = None
         self.num_petitions = None
+        summary, errs = summarize(self.analysis)
+        self.summary = summary
 
     def email(self, to_address):
         """Send an html email"""
@@ -211,11 +213,10 @@ class EmailBuilder:
             base_template = mylookup.get_template("summarize_record.html")
         else:
             base_template = mylookup.get_template("did_not_find_record.html")
-        summary, errs = summarize(self.analysis)
         return base_template.render(
             search_details=self.get_search_details(),
             there_were_traffic_cases=self.were_traffic_court_cases(),
-            summary=summary,
+            summary=self.summary,
             analysis=self.analysis,
         )
 
