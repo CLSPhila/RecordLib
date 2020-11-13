@@ -280,6 +280,10 @@ def update_summary_for_sealing_convictions(
     # The subsequent decisions are each about a single case, and the charges in that case.
     sealing_patt = re.compile(r"Sealing case (?P<docket_number>.*)")
     charge_patt = re.compile(r"Sealing charge (?P<sequence>[0-9,]+), .*")
+    full_record_decision = decision.reasoning[0]
+    # Decision about how much time is left for sealing is the first decision of the full_record_decision.
+    time_left_decision = full_record_decision.reasoning[0]
+    rest_of_full_record_decisions_are_true = all(full_record_decision.reasoning[1:])
     for case_decision in decision.reasoning[1:]:
         case_is_clearable = False
         match = sealing_patt.search(case_decision.name)
@@ -311,14 +315,49 @@ def update_summary_for_sealing_convictions(
                     rest_are_true = all(
                         [bool(dec) for dec in charge_decision.reasoning[1:]]
                     )
-                    if rest_are_true and not bool(there_are_no_outstanding_fines):
-                        summary = set_next_step(
-                            summary,
-                            docket_number,
-                            sequence,
-                            next_step="Charge may be sealable, but you must pay outstanding fines. "
-                            + there_are_no_outstanding_fines.reasoning,
+                    explanation = ""
+                    if (
+                        rest_are_true
+                        and rest_of_full_record_decisions_are_true
+                        and not bool(time_left_decision)
+                    ):
+                        # if everything but the fines decision is satisfied for this charge to be sealable,
+                        # and if there is
+                        explanation += (
+                            "You'll need to wait before this may become sealable. "
                         )
+                    if not bool(there_are_no_outstanding_fines):
+                        if len(explanation) > 0:
+                            explanation += "Also, it "
+                        else:
+                            explanation += "It "
+                        explanation += (
+                            "looks like there are outstanding fines that must be paid before any sealing could be possible. "
+                            + there_are_no_outstanding_fines.reasoning
+                        )
+                    summary = set_next_step(
+                        summary, docket_number, sequence, next_step=explanation
+                    )
+                    # if rest_are_true and not bool(there_are_no_outstanding_fines):
+                    #     summary = set_next_step(
+                    #         summary,
+                    #         docket_number,
+                    #         sequence,
+                    #         next_step="Charge may be sealable, but you must pay outstanding fines. "
+                    #         + there_are_no_outstanding_fines.reasoning,
+                    #     )
+                    # if all(
+                    #     [bool(dec) for dec in charge_decision.reasoning]
+                    # ) and not bool(time_left_decision):
+                    #     # In this case, the only reason the charge isn't sealable is that
+                    #     # more time needs to pass.
+                    #     # So let's tell the user how much more time there is to wait for sealability.
+                    #     summary = set_next_step(
+                    #         summary,
+                    #         docket_number,
+                    #         sequence,
+                    #         next_step="Need to wait ___ for sealing.",
+                    #     )
         if case_is_clearable:
             summary["clearable_cases"] += 1
     return summary

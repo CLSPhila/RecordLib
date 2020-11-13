@@ -114,7 +114,7 @@ def no_danger_to_person_offense(
 
 def ten_years_between_convictions(charge, case, crecord, years=10) -> Decision:
     """
-    True-valued decision if at least 10 years have passed since the disposition of `charge`, and 
+    True-valued decision if at least `years` years have passed since the disposition of `charge`, and 
     the next conviction.
     """
     decision = Decision(
@@ -129,7 +129,7 @@ def ten_years_between_convictions(charge, case, crecord, years=10) -> Decision:
     decision.reasoning = f"{years_between_convictions} years elapsed after the conviction for {charge.offense} in {case.docket_number}"
     if bool(decision.value) is False:
         years_remaining = crecord.years_until_n_years_pass_since_last_conviction(10)
-        decision.reasoning += f" It looks like enough time between convictions for sealing may pass after {years_remaining}."
+        decision.reasoning += f" It looks like enough time between convictions for sealing may pass after {years_remaining} more years."
 
 
 def ten_years_since_last_conviction_for_m_or_f(crecord: CRecord) -> Decision:
@@ -794,27 +794,33 @@ def offenses_punishable_by_two_or_more_years(
     So will RecordLib.
 
     Returns:
-        A Decision we'll call `d`. `bool(d)` is True if there were no offenses punishable by more than 
+        A Decision we'll call `d`. `bool(d)` is True if there were no more than offenses punishable by more than 
         two years in `crecord`.
 
     """
     # Grades that approximately the grades of offenses that also have penalty's of two or more years.
     proxy_grades = ["F1", "F2", "F3", "F", "M1", "M2"]
-    decision = Decision(
-        name=f"The record has no more than {conviction_limit} convictions for offenses punishable by two or more years in the last {within_years} years.",
-        reasoning=[
-            charge
-            for case in crecord.cases
-            for charge in case.charges
-            if (
-                charge.is_conviction()
-                and (charge.grade in proxy_grades)
-                and case.years_passed_disposition() < within_years
-            )
-        ],
-    )
-    decision.value = len(decision.reasoning) < conviction_limit
+    convictions_within_timelimit = [
+        charge
+        for case in crecord.cases
+        for charge in case.charges
+        if (
+            charge.is_conviction()
+            and (charge.grade in proxy_grades)
+            and case.years_passed_disposition() < within_years
+        )
+    ]
+    explanation = ""
 
+    decision = Decision(
+        name=f"The record has fewer than {conviction_limit} convictions for offenses punishable by two or more years in the last {within_years} years.",
+        value=len(convictions_within_timelimit) < conviction_limit,
+    )
+
+    if bool(decision.value):
+        decision.explanation = f"There were only {len(convictions_within_timelimit)} convictions within {within_years}."
+    else:
+        decision.explanation = f"There were {len(convictions_within_timelimit)} convictions within {within_years}."
     return decision
 
 
