@@ -309,7 +309,7 @@ def update_summary_for_sealing_convictions(
                     case_is_clearable = True
                     summary["clearable_charges"] += 1
                 else:
-                    # check if this charge is sealable but-for fines.
+                    # check if this charge is sealable but-for fines, and but-for time that needs to pass.
                     # if fines are the only reason this charge isn't sealable, say so.
                     there_are_no_outstanding_fines = charge_decision.reasoning[0]
                     rest_are_true = all(
@@ -326,6 +326,8 @@ def update_summary_for_sealing_convictions(
                         explanation += (
                             "You'll need to wait before this may become sealable. "
                         )
+                    ## TODO need to also explain if the other time-based decisions are blocking sealing here -
+                    ## rules 0, 6, and 7 in the full_record_sealing_requirements all deal with 'x years must have passed since y convictions`.
                     if not bool(there_are_no_outstanding_fines):
                         if len(explanation) > 0:
                             explanation += "Also, it "

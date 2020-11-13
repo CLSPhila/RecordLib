@@ -801,7 +801,7 @@ def offenses_punishable_by_two_or_more_years(
     # Grades that approximately the grades of offenses that also have penalty's of two or more years.
     proxy_grades = ["F1", "F2", "F3", "F", "M1", "M2"]
     convictions_within_timelimit = [
-        charge
+        (charge, case.years_passed_disposition())
         for case in crecord.cases
         for charge in case.charges
         if (
@@ -820,7 +820,11 @@ def offenses_punishable_by_two_or_more_years(
     if bool(decision.value):
         decision.explanation = f"There were only {len(convictions_within_timelimit)} convictions within {within_years}."
     else:
-        decision.explanation = f"There were {len(convictions_within_timelimit)} convictions within {within_years}."
+        years_since_last_conviction = max(
+            [years_passed for charge, years_passed in convictions_within_timelimit]
+        )
+        years_left = within_years - years_since_last_conviction
+        decision.explanation = f"There were {len(convictions_within_timelimit)} convictions graded M2 or greater within the previous {within_years} years. It looks like there are {years_left} years before the charge may be eligible for sealing."
     return decision
 
 
