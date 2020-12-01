@@ -378,14 +378,13 @@ def fines_and_wait_for_sealing(
     negative_decisions = negative_decisions_only(
         base_decisions(full_record_decision.reasoning)
     )
-
     # Of those, separate the decisions that will change to allowing sealing, after a waiting period
     # 'wait_decisions' are decisions that are blocking sealing until some time passes.
     # 'other_decisions' are other decisions blocking sealing.
     # If 'other_decisions' is empty but 'wait_decisions' is not, then this means
     # that the decisions requiring somebody waits for eligibility are the only reasons
     # the case isn't sealable.
-    other_decisions, wait_decisions = partition_decisions(
+    wait_decisions, other_decisions = partition_decisions(
         negative_decisions, partition_type="Wait"
     )
 
@@ -481,7 +480,7 @@ def update_summary_for_sealing_convictions(
                         max_time_to_wait = max(
                             wait_decisions, key=lambda d: d.years_to_wait
                         )
-                        next_step = f"{max_time_to_wait.reasoning} This charge may become eligible for sealing in {max_time_to_wait.years_to_wait} years."
+                        next_step = f"{max_time_to_wait.reasoning} Sealing this charge immeditately may require a pardon first."  # This charge may become eligible for sealing in {max_time_to_wait.years_to_wait} years."
                     else:
                         # Charge is not sealable.
                         next_step = "This charge does not appear eligible for sealing."

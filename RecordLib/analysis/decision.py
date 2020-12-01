@@ -124,7 +124,7 @@ class WaitDecision(Decision):
     """
 
     def __init__(self, *args, **kwargs):
-        self.type = "Wait"
-        self.years_to_wait = None
         super().__init__(*args, **kwargs)
+        self.years_to_wait = 0
+        self.type = "Wait"
 
