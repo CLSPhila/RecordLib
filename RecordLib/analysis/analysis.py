@@ -1,10 +1,10 @@
 from __future__ import annotations
-from typing import Callable
+from typing import Callable, Optional, Tuple, List
 import copy
 import re
 from collections import OrderedDict
 import logging
-
+from RecordLib.analysis import Decision, WaitDecision
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,9 @@ def summarize(analysis: Analysis) -> dict:
                 "offense": charge.offense,
                 "is_conviction": charge.is_conviction(),
                 "grade": charge.grade,
-                "disposition": charge.disposition,
+                "disposition": charge.disposition
+                if charge.disposition is not None
+                else "We could not find the disposition. We are assuming this wasn't a conviction, but could be wrong. A lawyer would be able to help figure this out.",
                 "disposition_date": charge.disposition_date or case.disposition_date,
                 "next_steps": "",
             }
@@ -272,6 +274,132 @@ def update_summary_for_nonconviction_expungements(
     return summary
 
 
+def get_decision_by_name(ds: List[Decision], name: str) -> Optional[Decision]:
+    """
+    Find a decision in a list of decision with its name.
+    """
+    return [d for d in ds if d.name == name]
+
+
+def negative_decisions_only(decisions: List[Decision]) -> [Decision]:
+    """
+    Given a list of decisions, return only the negative ones.
+    
+    It's the caller's responsibility to know what 'negative' means in the set of decisions.
+
+    For example, Negative/False doesn't always mean NOT SEALABLE ....
+    """
+    return [d for d in decisions if bool(d) is False]
+
+
+def partition_decisions(
+    decisions: List[Decision], partition_type: str = "Wait"
+) -> Tuple[[Decision], [Decision]]:
+    """
+    Partition a list of decisions, based on the type of the decision.
+    
+    Args:
+        decisions (List[Decision]): A list of Decisions.
+        partition_type (str): The type of decision to partion by (e.g., "Wait", or "Eligibility")
+
+    Returns: 
+        A tuple. The first element is a list of the Decisions that _are_ of the type `partition_type`, and the 
+            second element is the decisions that are not of that type.
+    """
+    return (
+        [d for d in decisions if d.type == partition_type],
+        [d for d in decisions if d.type != partition_type],
+    )
+
+
+def flatten(item) -> List:
+    """
+    given an item, if its a nested list, flatten it.
+    """
+    if item == []:
+        return item
+    if not isinstance(item, list):
+        return [item]
+    return flatten(item[0]) + flatten(item[1:])
+
+
+def _base_decisions(decision: Decision) -> List[Decision]:
+    """
+    Given a single decision, if this decision has no Decisions as children, return it. 
+    Otherwise return the base decisions of each of its children.
+    """
+    try:
+        child1 = decision.reasoning[0]
+        assert isinstance(child1, Decision)
+        # This decision's reasoning is a list of more decisions.
+        return flatten([_base_decisions(d) for d in decision.reasoning])
+    except (AssertionError, IndexError):
+        # This decision is the base decision.
+        return [decision]
+
+
+def base_decisions(decisions: [Decision]) -> List[Decision]:
+    """
+    Given a list of decisions, return all the decisions that don't have any Decisions as their children.
+
+    In other words, a Decision can be a tree of Decisions. Return the nodes w/ no children.
+    """
+    return flatten([_base_decisions(d) for d in decisions])
+
+
+def fines_and_wait_for_sealing(
+    charge_decision: Decision, case_decision: Decision, full_record_decision: Decision
+) -> Tuple[Optional[Decision], Optional[WaitDecision]]:
+    """
+    Takes a Decision about a case and a decision about the full record, and returns the fines decision and a list of any decisions at the base of this
+        Decision that have (remember, Decisons' `reasoning` might be more Decisions)
+        waiting times. 
+        
+    It'll only return these decisions if fines and WaitDecisions are the only 
+        Decisions preventing sealing. 
+ 
+    Args: 
+        case_decision: The first element of the case_decision's reasoning is about whether fines and costs are paid on the case. 
+        full_record_decision: There are a number of Decisions about whether the person must wait before anything in the record is eligible for sealing.
+    """
+
+    fines_decision = get_decision_by_name(
+        case_decision.reasoning, "Are all fines and costs paid for these cases?"
+    )
+    try:
+        fines_decision = fines_decision[0]
+    except IndexError:
+        fines_decision = None
+
+    if bool(fines_decision):
+        # fines were not a problem here, so its value is True.
+        fines_decision = None
+    # Collect a list of the decisions preventing sealing
+    negative_decisions = negative_decisions_only(
+        base_decisions(full_record_decision.reasoning)
+    )
+
+    # Of those, separate the decisions that will change to allowing sealing, after a waiting period
+    # 'wait_decisions' are decisions that are blocking sealing until some time passes.
+    # 'other_decisions' are other decisions blocking sealing.
+    # If 'other_decisions' is empty but 'wait_decisions' is not, then this means
+    # that the decisions requiring somebody waits for eligibility are the only reasons
+    # the case isn't sealable.
+    other_decisions, wait_decisions = partition_decisions(
+        negative_decisions, partition_type="Wait"
+    )
+
+    # combine the negative decisions from the full record with the negative decisions from the charge
+    # other_decisions += negative_decisions_only(charge_decision.reasoning)
+
+    if len(other_decisions) == 0:
+        # If the non-wait decisions were not preventing sealing, then the _only_ reasons preventing sealing are decisions
+        # that will flip to true after a waiting period.
+        return fines_decision, wait_decisions
+
+    return fines_decision, None
+
+
 def update_summary_for_sealing_convictions(
     summary: dict, decision: "PetitionDecision"
 ) -> dict:
@@ -281,10 +409,9 @@ def update_summary_for_sealing_convictions(
     sealing_patt = re.compile(r"Sealing case (?P<docket_number>.*)")
     charge_patt = re.compile(r"Sealing charge (?P<sequence>[0-9,]+), .*")
     full_record_decision = decision.reasoning[0]
-    # Decision about how much time is left for sealing is the first decision of the full_record_decision.
-    time_left_decision = full_record_decision.reasoning[0]
-    rest_of_full_record_decisions_are_true = all(full_record_decision.reasoning[1:])
     for case_decision in decision.reasoning[1:]:
+        # `case_is_clearable` indicates that _something_ in the case can be cleared,
+        # so we can tell the user about what's sealable at a very high level.
         case_is_clearable = False
         match = sealing_patt.search(case_decision.name)
         docket_number = match.group("docket_number")
@@ -296,10 +423,12 @@ def update_summary_for_sealing_convictions(
             summary["clearable_cases"] += 1
             summary["clearable_charges"] += len(case_decision.reasoning)
         else:
+            # The whole case isn't sealable, so we'll review each charge.
             for charge_decision in case_decision.reasoning:
                 match = charge_patt.search(charge_decision.name)
                 sequence = match.group("sequence")
                 if charge_decision.value == "Sealable":
+                    # This charge is sealable, so tell the user.
                     summary = set_next_step(
                         summary,
                         docket_number,
@@ -309,57 +438,56 @@ def update_summary_for_sealing_convictions(
                     case_is_clearable = True
                     summary["clearable_charges"] += 1
                 else:
+                    # This charge is _not_ sealable. We need to check if:
+                    # 1) the charge will _become_ sealable after some time passes.
+                    # 2) Either:
+                    #    A) It will become sealable, and there are also charges that need to get paid
+                    #    B) The only reason its not sealable is the fees.
                     # check if this charge is sealable but-for fines, and but-for time that needs to pass.
                     # if fines are the only reason this charge isn't sealable, say so.
-                    there_are_no_outstanding_fines = charge_decision.reasoning[0]
-                    rest_are_true = all(
-                        [bool(dec) for dec in charge_decision.reasoning[1:]]
+
+                    # TODO We're going to do this by
+                    #    create a Decision subclass called WaitDecision that has
+                    #       an extra prop, 'years_to_wait'. If the WaitDecision is that
+                    #       time must pass before the Decision's value flips, then
+                    #       `years_to_wait` will explain that.
+                    #   Then we'll have a function `fines_and_wait_for_sealing :: Decision -> Optional[Decision], Optional[Decision]` that
+                    #       takes a Decision, and returns the fines decision and a list of any decisions at the base of this
+                    #       Decision that have (remember, Decisons' `reasoning` might be more Decisions)
+                    #       waiting times. It'll only return these decisions if fines and WaitDecisions are the only
+                    #       Decisions preventing sealing.
+                    #   At that point, we'll have the decision about fines, and a list of decisions that will flip their value after waiting.
+                    #       We can tell the user "you've got to pay xxx", and "You've got to wait for yyy"
+
+                    fines_left, wait_decisions = fines_and_wait_for_sealing(
+                        charge_decision, case_decision, full_record_decision
                     )
-                    explanation = ""
-                    if (
-                        rest_are_true
-                        and rest_of_full_record_decisions_are_true
-                        and not bool(time_left_decision)
-                    ):
-                        # if everything but the fines decision is satisfied for this charge to be sealable,
-                        # and if there is
-                        explanation += (
-                            "You'll need to wait before this may become sealable. "
+
+                    next_step = ""
+                    if fines_left:
+                        next_step = f"{fines_left.reasoning} Fines remaining on this case must be resolved before the charge can be sealed."
+                        if wait_decisions:
+                            # there are fines to pay, and the person must wait for some time to seal.
+                            max_time_to_wait = max(
+                                wait_decisions, key=lambda d: d.years_to_wait
+                            )
+                            # TODO - the WaitDecisions need 'reasoning' that's text, not a list of the disqualifying convictions.
+                            next_step += f" In addition, it looks like you must wait {max_time_to_wait.years_to_wait} before eligibility. {max_time_to_wait.reasoning}"
+                            summary = set_next_step(
+                                summary, docket_number, sequence, next_step
+                            )
+                    elif wait_decisions:
+                        # Person must wait for time to pass, before sealing.
+                        max_time_to_wait = max(
+                            wait_decisions, key=lambda d: d.years_to_wait
                         )
-                    ## TODO need to also explain if the other time-based decisions are blocking sealing here -
-                    ## rules 0, 6, and 7 in the full_record_sealing_requirements all deal with 'x years must have passed since y convictions`.
-                    if not bool(there_are_no_outstanding_fines):
-                        if len(explanation) > 0:
-                            explanation += "Also, it "
-                        else:
-                            explanation += "It "
-                        explanation += (
-                            "looks like there are outstanding fines that must be paid before any sealing could be possible. "
-                            + there_are_no_outstanding_fines.reasoning
-                        )
+                        next_step = f"{max_time_to_wait.reasoning} This charge may become eligible for sealing in {max_time_to_wait.years_to_wait} years."
+                    else:
+                        # Charge is not sealable.
+                        next_step = "This charge does not appear eligible for sealing."
                     summary = set_next_step(
-                        summary, docket_number, sequence, next_step=explanation
+                        summary, docket_number, sequence, next_step=next_step
                     )
-                    # if rest_are_true and not bool(there_are_no_outstanding_fines):
-                    #     summary = set_next_step(
-                    #         summary,
-                    #         docket_number,
-                    #         sequence,
-                    #         next_step="Charge may be sealable, but you must pay outstanding fines. "
-                    #         + there_are_no_outstanding_fines.reasoning,
-                    #     )
-                    # if all(
-                    #     [bool(dec) for dec in charge_decision.reasoning]
-                    # ) and not bool(time_left_decision):
-                    #     # In this case, the only reason the charge isn't sealable is that
-                    #     # more time needs to pass.
-                    #     # So let's tell the user how much more time there is to wait for sealability.
-                    #     summary = set_next_step(
-                    #         summary,
-                    #         docket_number,
-                    #         sequence,
-                    #         next_step="Need to wait ___ for sealing.",
-                    #     )
         if case_is_clearable:
             summary["clearable_cases"] += 1
     return summary

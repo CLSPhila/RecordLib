@@ -21,6 +21,7 @@ class Decision:
         self.name = name
         self.value = value
         self.reasoning = reasoning
+        self.type = "Decision"
 
     def __bool__(self):
         """
@@ -111,4 +112,19 @@ class FilterDecision(Decision):
         This method exists so there's a consistent way to get cases from different types of petitions.
         """
         return self.value
+
+
+class WaitDecision(Decision):
+    """
+    A decision indicating that the value will change after a period of time passes.
+    
+    The only difference between this and a base Decision is that this has a `years_to_wait` property.
+
+    This property is None by default.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.type = "Wait"
+        self.years_to_wait = None
+        super().__init__(*args, **kwargs)
 

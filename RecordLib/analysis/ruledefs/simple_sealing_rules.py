@@ -21,7 +21,7 @@ from typing import Tuple, Union, List, Optional
 import copy
 import json
 import re
-from RecordLib.analysis import Decision
+from RecordLib.analysis import Decision, WaitDecision
 from RecordLib.petitions import Sealing
 import math
 from dateutil.relativedelta import relativedelta
@@ -33,7 +33,8 @@ def no_danger_to_person_offense(
     within_years: Optional[int] = None,
     penalty_limit: Optional[int] = None,
     conviction_limit: Optional[int] = None,
-) -> Decision:
+    arrest_date: Optional[Date] = None,
+) -> WaitDecision:
     """
     Individual is not eligible for sealing if they have been convicted within 20 years of an offense
     punishable by imprisonment of seven or more years which is an offense under Article B of Part II.
@@ -53,17 +54,11 @@ def no_danger_to_person_offense(
         within_years: Person cannot have been convicted of the relevant offense within this number of years..
         penalty_limit: This rule applies to offenses with a sentence equal or greater than this limit.
         conviction_limit: The max number of times a peron can have this conviction before failing the rule.
+        arrest_date: The arrest date of a case, if we're evaluating a charge on that case.
     """
     # Suppose `item` is a whole Record.
     try:
-        cases_within_years = [
-            c
-            for c in item.cases
-            if c.arrest_date
-            and relativedelta(date.today(), c.arrest_date).years
-            < within_years  # not sure if this needs to be <=
-        ]
-        decision = Decision(
+        decision = WaitDecision(
             name="No convictions in the record for article B offenses, felonies or punishable by more than 7 years, in the last 20 years.",
             reasoning=[
                 no_danger_to_person_offense(
@@ -71,18 +66,36 @@ def no_danger_to_person_offense(
                     within_years=within_years,
                     penalty_limit=penalty_limit,
                     conviction_limit=conviction_limit,
+                    arrest_date=case.arrest_date,
                 )
-                for case in cases_within_years
+                for case in item.cases
                 for charge in case.charges
             ],
         )
         decision.value = all(decision.reasoning)
+        if bool(decision.value) is False:
+            # There are disqualifying convictions on this record.
+            # So find the latest disqualifying conviction, and find out how long before `within_years`
+            # years will have passed.
+            decision.years_to_wait = max(
+                [d.years_to_wait for d in decision.reasoning if bool(d) is False]
+            )
+
     except AttributeError:
         # `item` is probably a charge.
-        decision = Decision(
+        # 'True' value means that that the charge _IS NOT_ a disqualifying decision.
+        # This is so that we can say a whole record is sealable as long as all these
+        # decisions are True.
+        decision = WaitDecision(
             name="Is this not a conviction for an Article B offense (M1 or more serious)?"
         )
         try:
+            years_since_charge_occurred = relativedelta(
+                date.today(), c.arrest_date
+            ).years
+            charge_occured_within_disqualifying_period = (
+                years_since_charge_occurred < within_years
+            )
             if (
                 item.get_statute_chapter() == 18
                 and item.get_statute_section() > 2300
@@ -90,15 +103,29 @@ def no_danger_to_person_offense(
                 and item.is_conviction()
             ):
                 if Charge.grade_GTE(item.grade, "M1"):
-                    decision.value = False
-                    decision.reasoning = f"Statute {item.statute} is an Article B conviction, with a grade of at least M1."
+                    if charge_occured_within_disqualifying_period:
+                        decision.value = False
+                        decision.reasoning = f"Statute {item.statute} is an Article B conviction, with a grade of at least M1, and it occurred only {years_since_charge_occurred} years ago."
+                        decision.years_to_wait = (
+                            within_years - years_since_charge_occurred
+                        )
+                    else:
+                        decision.value = True
+                        decision.reasoning = f"Statute {item.statute} is an Article B conviction, with a grade of at least M1, and it occured {years_since_charge_occurred} years ago."
                 elif item.grade.strip() == "":
                     # The grade is missing, and otherwise this is an excluded offense.
-                    decision.value = False
-                    decision.reasoning = f"Statute {item.statute} is an Article B conviction, but we do not know the grade. It may or may not be an excluded offense."
+                    if charge_occured_within_disqualifying_period:
+                        decision.value = False
+                        decision.reasoning = f"Statute {item.statute} is an Article B conviction, but we do not know the grade. It may or may not be an excluded offense. The offense occurred only {years_since_charge_occurred} years ago."
+                        decision.years_to_wait = (
+                            within_years - years_since_charge_occurred
+                        )
+                    else:
+                        decision.value = True
+                        decision.reasoning = f"Statute {item.statute} is an Article B conviction, but we do not know the grade. It may or may not be an excluded offense. The offense occurred {years_since_charge_occurred} years ago."
                 else:
                     decison.value = True
-                    decison.reasoning = f"Statute {item.statute} appears not to be an Article B conviction."
+                    decison.reasoning = f"Statute {item.statute} appears not to be a disqualifying Article B conviction."
 
             else:
                 decison.value = True
@@ -112,12 +139,12 @@ def no_danger_to_person_offense(
     return decision
 
 
-def ten_years_between_convictions(charge, case, crecord, years=10) -> Decision:
+def ten_years_between_convictions(charge, case, crecord, years=10) -> WaitDecision:
     """
     True-valued decision if at least `years` years have passed since the disposition of `charge`, and 
     the next conviction.
     """
-    decision = Decision(
+    decision = WaitDecision(
         name=f"Has it been 10 years since a conviction for {charge.offense}?"
     )
     if not charge.is_conviction():
@@ -129,10 +156,11 @@ def ten_years_between_convictions(charge, case, crecord, years=10) -> Decision:
     decision.reasoning = f"{years_between_convictions} years elapsed after the conviction for {charge.offense} in {case.docket_number}"
     if bool(decision.value) is False:
         years_remaining = crecord.years_until_n_years_pass_since_last_conviction(10)
+        decision.years_to_wait = years_remaining
         decision.reasoning += f" It looks like enough time between convictions for sealing may pass after {years_remaining} more years."
 
 
-def ten_years_since_last_conviction_for_m_or_f(crecord: CRecord) -> Decision:
+def ten_years_since_last_conviction_for_m_or_f(crecord: CRecord) -> WaitDecision:
     """
     Person is not eligible for sealing unless they have been "free from conviction
     for a period of 10 years" 18 Pa C.S. § 9122.1(a). Only convictions for misdemeanors or felonies
@@ -142,9 +170,9 @@ def ten_years_since_last_conviction_for_m_or_f(crecord: CRecord) -> Decision:
         crecord: A criminal record
 
     Returns:
-        a Decision indicating if the record has a conviction that's more recent than 10 years.
+        a WaitDecision indicating if the record has a conviction that's more recent than 10 years.
     """
-    decision = Decision(
+    decision = WaitDecision(
         name="Has the person been free of conviction for at least 10 years?",
     )
     convictions = [
@@ -165,6 +193,7 @@ def ten_years_since_last_conviction_for_m_or_f(crecord: CRecord) -> Decision:
     if len(convictions_with_disposition_dates) == 0:
         decision.value = False
         decision.reasoning = "The disposition dates are missing, so to be safe, we assume it has not been 10 years since the last conviction."
+        decision.years_to_wait = 10
         return decision
 
     last_conviction = max(
@@ -185,9 +214,10 @@ def ten_years_since_last_conviction_for_m_or_f(crecord: CRecord) -> Decision:
             + " convictions without disposition dates, so our estimate of the last conviction date may be wrong."
         )
     decision.value = years_since_last_conviction > 10
-
+    years_remaining = math.ceil(10 - years_since_last_conviction)
     if decision.value is False:
-        decision.reasoning += f" Person may be eligible for sealing in {math.ceil(10 - years_since_last_conviction)} years, if there are no further convictions. "
+        decision.years_to_wait = years_remaining
+        decision.reasoning += f" Person may be eligible for sealing in {years_remaining} years, if there are no further convictions. "
     return decision
 
 
@@ -276,7 +306,7 @@ def all_fines_and_costs_paid(crecord: CRecord) -> Decision:
     Explain if all the fines and costs on a list of cases are paid.
     """
     cases = crecord.cases
-    decision = Decision(name=f"Are all fines and costs paid for these cases?",)
+    decision = Decision(name="Are all fines and costs paid for these cases?",)
     decision.reasoning = [fines_and_costs_paid(case) for case in cases]
     decision.value = all(decision.reasoning)
     return decision
@@ -301,13 +331,11 @@ def fines_and_costs_paid(case: Case) -> Decision:
     if case.total_fines is None or case.fines_paid is None:
         if case.total_fines is None:
             decision.value = False
-            decision.reasoning += (
-                f"Total Fines is undefined, so we're not sure if this case has fines. "
-            )
+            decision.reasoning += f"The software could not find fines and costs, so we're not sure if this case has fines. "
 
         if case.fines_paid is None:
             decision.value = False
-            decision.reasoning += f"Fines paid is undefined, so we're not sure if this case has any fines paid."
+            decision.reasoning += f"The software could not find fines and costs, so we're not sure if this case has any fines paid."
         return decision
 
     decision.value = (case.total_fines - case.fines_paid) <= 0
@@ -411,7 +439,7 @@ def is_felony_conviction(charge: Charge) -> Decision:
     return decision
 
 
-def any_felony_convictions_n_years(crecord: CRecord, years: int) -> Decision:
+def any_felony_convictions_n_years(crecord: CRecord, years: int) -> WaitDecision:
     """
     Were there any felony convictions in the last `years` years?
 
@@ -425,7 +453,7 @@ def any_felony_convictions_n_years(crecord: CRecord, years: int) -> Decision:
         A Decision that is True if there were felony convictions within `years` years.
 
     """
-    decision = Decision(name=f"Were there any felony convictions within {years}")
+    decision = WaitDecision(name=f"Were there any felony convictions within {years}")
     decision.reasoning = [
         is_felony_conviction(charge) and case.years_passed_disposition() > years
         for case in crecord.cases
@@ -466,7 +494,8 @@ def no_offense_against_family(
     penalty_limit: Optional[int] = None,
     conviction_limit: Optional[int] = None,
     within_years: Optional[int] = None,
-) -> Decision:
+    charge_date: Optional[Date] = None,
+) -> WaitDecision:
     """
     Individuals are ineligible for sealing with certain offenses against the family. (Article D of Part II)
 
@@ -482,26 +511,48 @@ def no_offense_against_family(
     """
     # Presume a Charge
     try:
-        decision = Decision(
+        decision = WaitDecision(
             name=f"Charge for {item.statute} is not an offense against the family.",
-            reasoning=[
+            reasoning="",
+        )
+
+        if all(
+            [
                 item.is_conviction(),
                 item.get_statute_chapter() == 18,
                 item.get_statute_section() > 4300,
                 item.get_statute_section() < 4500,
-            ],
-        )
-        decision.value = not all(decision.reasoning)
+            ]
+        ):
+            # charge is the kind of charge that's disqualified. Did it happen recently enough to be disqualifying?
+            years_since_charge_occurred = relativedelta(date.today(), charge_date).years
+            years_to_wait = within_years - years_since_charge_occurred
+            decision.reasoning += "This charge is for an offense against the family, "
+            if years_to_wait <= 0:
+                decision.value = True
+                decision.reasoning += (
+                    f"but it took place longer than {within_years} years ago."
+                )
+            else:
+                decision.value = False
+                decision.reasoning += (
+                    f"and it took place less than {within_years} years ago."
+                )
+                decision.years_to_wait = years_to_wait
+        else:
+            decision.value = True
+            decision.reasoning = "This charge is not for an offense against the family."
+
     except TypeError:
         # `item`'s get_statute functions returned something that doesn't have < > defined, such as None.
-        decision = Decision(
+        decision = WaitDecision(
             name=f"Charge for {item.statute} is not an offense against the family.",
             reasoning="The statute doesn't appear to be one of the Article D offense statutes.",
             value=True,
         )
     except AttributeError:
         # `item` may be a whole record.
-        decision = Decision(
+        decision = WaitDecision(
             name=(
                 f"Not convicted within {within_years} more than {conviction_limit} times "
                 + f"of felony or offense punishable by {penalty_limit} years."
@@ -513,16 +564,21 @@ def no_offense_against_family(
                     penalty_limit=penalty_limit,
                     conviction_limit=conviction_limit,
                     within_years=within_years,
+                    charge_date=case.arrest_date,
                 )
                 for case in item.cases
                 for charge in case.charges
-                if case.years_passed_disposition() <= within_years
             ],
         )
-        decision.value = (
-            len(list(filter(lambda d: bool(d) is False, decision.reasoning)))
-            < conviction_limit
+
+        disqualifying_charges = list(
+            filter(lambda d: bool(d) is False, decision.reasoning)
         )
+
+        decision.value = len(disqualifying_charges) < conviction_limit
+        if bool(decision.value) is False:
+            max_years_to_wait = max([d.years_to_wait for d in disqualifying_charges])
+            decision.years_to_wait = max_years_to_wait
     return decision
 
 
@@ -531,7 +587,8 @@ def no_firearms_offense(
     penalty_limit: Optional[int] = None,
     conviction_limit: Optional[int] = None,
     within_years: Optional[int] = None,
-) -> Decision:
+    charge_date: Optional[date] = None,
+) -> WaitDecision:
     """
     No disqualifying convictions for firearms offenses. (Chapter 61 offenses) 
     
@@ -548,15 +605,36 @@ def no_firearms_offense(
     """
     # assume item is a charge.
     try:
-        decision = Decision(
-            name=f"Charge for {item.statute} is not a firearms offense.",
-            reasoning=[
+        decision = WaitDecision(
+            name=f"Charge for {item.statute} is not a firearms offense.", reasoning=""
+        )
+
+        if all(
+            [
                 item.get_statute_chapter() == 18,
                 item.get_statute_section() > 6100,
                 item.get_statute_section() < 6200,
-            ],
-        )
-        decision.value = not all(decision.reasoning)
+            ]
+        ):
+            # charge is the kind of charge that's disqualified. Did it happen recently enough to be disqualifying?
+            years_since_charge_occurred = relativedelta(date.today(), charge_date).years
+            years_to_wait = within_years - years_since_charge_occurred
+            decision.reasoning = "This charge is for a firearms offense, "
+            if years_to_wait <= 0:
+                decision.value = True
+                decision.reasoning += (
+                    f"but it occurred more than {within_years} years ago."
+                )
+            else:
+                decision.value = False
+                decision.reasoning += (
+                    f"and it occurred less than {within_years} years ago."
+                )
+                decision.years_to_wait = years_to_wait
+
+        else:
+            decision.value = True
+            decision.reasoning = "This was not a firearms offense."
     except TypeError:
         # `item`'s get_statute functions returned something that doesn't have < > defined, such as None.
         decision = Decision(
@@ -578,16 +656,23 @@ def no_firearms_offense(
                     penalty_limit=penalty_limit,
                     conviction_limit=conviction_limit,
                     within_years=within_years,
+                    charge_date=charge.disposition_date or case.disposition_date,
                 )
                 for case in item.cases
                 for charge in case.charges
-                if case.years_passed_disposition() <= within_years
             ],
         )
-        decision.value = (
-            len(list(filter(lambda d: bool(d) is False, decision.reasoning)))
-            < conviction_limit
+
+        disqualifying_offenses = list(
+            filter(lambda d: bool(d) is False, decision.reasoning)
         )
+
+        decision.value = len(disqualifying_offenses) < conviction_limit
+
+        if bool(decision.value) is False:
+            decision.years_to_wait = max(
+                [d.years_to_Wait for d in disqualifying_offenses]
+            )
     return decision
 
 
@@ -596,7 +681,8 @@ def no_sexual_offense(
     penalty_limit: Optional[int] = None,
     conviction_limit: Optional[int] = None,
     within_years: Optional[int] = None,
-) -> Decision:
+    charge_date: Optional[date] = None,
+) -> WaitDecision:
     """
     No disqualifying convictions for sexual offenses.
 
@@ -652,8 +738,8 @@ def no_sexual_offense(
     ]
     # presume item is a Charge
     try:
-        decision = Decision(
-            name="This charge is not a disqualifying sexual or registration offense?"
+        decision = WaitDecision(
+            name=f"This charge for {item.offense} is not a disqualifying sexual or registration offense?"
         )
         patt = re.compile(
             r"^(?P<chapt>\d+)\s*§\s(?P<section>\d+\.?\d*)\s*(?P<subsections>[\(\)A-Za-z0-9\.]+).*"
@@ -668,15 +754,38 @@ def no_sexual_offense(
             this_offense = matches.group("section") + matches.group(
                 "subsections"
             ).replace("(", "").replace(")", "")
-            decision.reasoning = [
-                item.is_conviction(),
-                item.get_statute_chapter() == 18,
-                this_offense in tiered_sex_offenses,
-            ]
-            decision.value = not all(decision.reasoning)
+
+            if all(
+                [
+                    item.is_conviction(),
+                    item.get_statute_chapter() == 18,
+                    this_offense in tiered_sex_offenses,
+                ]
+            ):
+                decision.reasoning = "This charge is for a disqualifying sex offense, "
+                years_since_charge_occurred = relativedelta(
+                    date.today(), charge_date
+                ).years
+                years_to_wait = within_years - years_since_charge_occurred
+                if years_to_wait <= 0:
+                    decision.value = True
+                    decision.reasoning += (
+                        f"but it occurred more than {within_years} years ago."
+                    )
+                else:
+                    decision.value = False
+                    decision.reasoning += (
+                        f"and it occurred less than {within_years} years ago."
+                    )
+                    decision.years_to_wait = years_to_wait
+            else:
+                decision.reasoning = (
+                    "This does not appear to be a disqualifying sexual offense."
+                )
+                decision.value = True
     except AttributeError:
         # item is a CRecord
-        decision = Decision(
+        decision = WaitDecision(
             name=(
                 f"Not convicted more than {conviction_limit} times, within {within_years} years,"
                 + f"of certain sexual or registration-related offenses punishable by {penalty_limit} years"
@@ -687,16 +796,21 @@ def no_sexual_offense(
                     penalty_limit=penalty_limit,
                     conviction_limit=conviction_limit,
                     within_years=within_years,
+                    charge_date=charge.disposition_date or case.disposition_date,
                 )
                 for case in item.cases
                 for charge in case.charges
                 if case.years_passed_disposition() <= within_years
             ],
         )
-        decision.value = (
-            len(list(filter(lambda d: bool(d) is False, decision.reasoning)))
-            < conviction_limit
+        disqualifying_charges = list(
+            filter(lambda d: bool(d) is False, decision.reasoning)
         )
+        decision.value = len(disqualifying_charges) < conviction_limit
+        if bool(decision.value) is False:
+            decision.years_to_wait = max(
+                [d.years_to_wait for d in disqualifying_charges]
+            )
     return decision
 
 
@@ -741,8 +855,8 @@ def no_corruption_of_minors_offense(
 
 
 def more_than_x_convictions_y_grade_z_years(
-    crecord: CRecord, offense_limit: int, grade_limit: str, years: int
-) -> Decision:
+    crecord: CRecord, offense_limit: int, grade_limit: str, within_years: int
+) -> WaitDecision:
     """
     Does `crecord` contain equal or more than `offense_limit` convictions for `grade_limit` (or more serious) offenses in the last `years` years?
 
@@ -760,10 +874,10 @@ def more_than_x_convictions_y_grade_z_years(
     Returns:
         A decision that is True if `crecord` contains more than the `offense_limit` of `grade_limit` convictions in the last `years` years.
     """
-    decision = Decision(
+    decision = WaitDecision(
         name=f"Does {crecord.person.full_name()}'s record contain {offense_limit} or more convictions, graded {grade_limit} or higher, within the last {years} years?"
     )
-    qualifying_charges = []
+    disqualifying_charges = []
     for case in crecord.cases:
         for charge in case.charges:
             if (
@@ -771,15 +885,26 @@ def more_than_x_convictions_y_grade_z_years(
                 and charge.is_conviction()
                 and Charge.grade_GTE(charge.grade, grade_limit)
             ):
-                qualifying_charges.append(charge)
-    decision.reasoning = qualifying_charges
+                disqualifying_charges.append((charge, case.years_passed_disposition()))
+
+    decision.reasoning = (
+        f"There are {len(disqualifying_charges)} disqualifying charges on the record."
+    )
     decision.value = len(qualifying_charges) >= offense_limit
+    if bool(decision.value) is True:
+        most_recent_charge = min(
+            [(c, y) for c, years in disqualifying_charges], lambda c, y: y
+        )
+        decision.years_to_wait = (
+            within_years - relativedelta(date.today(), most_recent_charge[1]).years
+        )
+
     return decision
 
 
-def offenses_punishable_by_two_or_more_years(
+def no_offenses_punishable_by_two_or_more_years(
     crecord: CRecord, conviction_limit: int, within_years: int
-) -> Decision:
+) -> WaitDecision:
     """
     Not too many convictions for offenses punishable by two or more years.
     
@@ -810,21 +935,21 @@ def offenses_punishable_by_two_or_more_years(
             and case.years_passed_disposition() < within_years
         )
     ]
-    explanation = ""
 
-    decision = Decision(
+    decision = WaitDecision(
         name=f"The record has fewer than {conviction_limit} convictions for offenses punishable by two or more years in the last {within_years} years.",
         value=len(convictions_within_timelimit) < conviction_limit,
     )
 
     if bool(decision.value):
-        decision.explanation = f"There were only {len(convictions_within_timelimit)} convictions within {within_years}."
+        decision.reasoning = f"There were only {len(convictions_within_timelimit)} convictions within {within_years}."
     else:
         years_since_last_conviction = max(
             [years_passed for charge, years_passed in convictions_within_timelimit]
         )
         years_left = within_years - years_since_last_conviction
-        decision.explanation = f"There were {len(convictions_within_timelimit)} convictions graded M2 or greater within the previous {within_years} years. It looks like there are {years_left} years before the charge may be eligible for sealing."
+        decision.reasoning = f"There were {len(convictions_within_timelimit)} convictions graded M2 or greater within the previous {within_years} years. It looks like there are {years_left} years before the charge may be eligible for sealing."
+        decision.years_to_wait = years_left
     return decision
 
 
@@ -840,7 +965,7 @@ def has_indecent_exposure(crecord) -> Decision:
 
 def no_indecent_exposure(
     crecord, conviction_limit: int, within_years: int = 15
-) -> Decision:
+) -> WaitDecision:
     """
     Cannot seal if record contains conviction for indecent exposure within 15 years.
     18 PaCS 9122.1(b)(2)(iii)(B)(I)
@@ -850,25 +975,37 @@ def no_indecent_exposure(
         offenses in `crecord`.
 
     """
-    decision = Decision(
+    disqualifying_charges = [
+        (charge, case.years_passed_disposition())
+        for case in crecord.cases
+        for charge in case.charges
+        if (
+            case.years_passed_disposition() < within_years
+            and charge.is_conviction()
+            and charge.get_statute_chapter() == 18
+            and charge.get_statute_section() == 3127
+        )
+    ]
+    decision = WaitDecision(
         name="No indecent exposure convictions in this record.",
-        reasoning=[
-            charge
-            for case in crecord.cases
-            for charge in case.charges
-            if (
-                case.years_passed_disposition() < within_years
-                and charge.is_conviction()
-                and charge.get_statute_chapter() == 18
-                and charge.get_statute_section() == 3127
-            )
-        ],
+        reasoning=disqualifying_charges,
     )
     decision.value = True if len(decision.reasoning) < conviction_limit else False
+
+    if decision.value == False:
+        most_recent_disqualifying_charge = min(
+            [(c, y) for c, y in disqualifying_charges], lambda c, y: y
+        )
+        years_to_wait = within_years - most_recent_disqualifying_charge
+        if years_to_wait > 0:
+            decision.years_to_wait = years_to_wait
+    else:
+        decision.years_to_wait = 0
+
     return decision
 
 
-def has_sexual_intercourse_w_animal(crecord):
+def has_sexual_intercourse_w_animal(crecord: CRecord) -> Decision:
     """
     True-valued decision if crecord has any convictions for violation of 
     18 Pa CS 3129.
@@ -881,7 +1018,7 @@ def has_sexual_intercourse_w_animal(crecord):
 
 def no_sexual_intercourse_w_animal(
     crecord: CRecord, conviction_limit: int, within_years: int = 15
-) -> Decision:
+) -> WaitDecision:
     """
     Cannot seal if record contains conviction for intercourse w/ animal within 15 years.
 
@@ -890,21 +1027,34 @@ def no_sexual_intercourse_w_animal(
     Returns:
         Decision that is True if there were no sexual intercourse w/ animal convictions in the record.  
     """
-    decision = Decision(
+    disqualifying_charges = [
+        (charge, case.years_passed_disposition())
+        for case in crecord.cases
+        for charge in case.charges
+        if (
+            case.years_passed_disposition() < within_years
+            and charge.is_conviction()
+            and charge.get_statute_chapter() == 18
+            and charge.get_statute_section() == 3129
+        )
+    ]
+
+    decision = WaitDecision(
         name="No intercourse with animals convictions in this record.",
-        reasoning=[
-            charge
-            for case in crecord.cases
-            for charge in case.charges
-            if (
-                case.years_passed_disposition() < within_years
-                and charge.is_conviction()
-                and charge.get_statute_chapter() == 18
-                and charge.get_statute_section() == 3129
-            )
-        ],
+        reasoning=disqualifying_charges,
     )
     decision.value = True if len(decision.reasoning) < conviction_limit else False
+
+    if not decision.value:
+        most_recent_disqualifying_charge = min(
+            [(c, y) for c, y in disqualifying_charges], lambda c, y: y
+        )
+        years_to_wait = within_years - most_recent_disqualifying_charge
+        if years_to_wait > 0:
+            decision.years_to_wait = years_to_wait
+    else:
+        decision.years_to_wait = 0
+
     return decision
 
 
@@ -923,7 +1073,7 @@ def no_failure_to_register(
     item: Option[CRecord, Charge],
     conviction_limit: Optional[int] = None,
     within_years: Optional[int] = 15,
-) -> Decision:
+) -> Option[WaitDecision, Decision]:
     """
     Cannot seal if record contains conviction for failure to register within 15 years.
 
@@ -937,19 +1087,30 @@ def no_failure_to_register(
     """
     # A Crecord
     try:
-        decision = Decision(
+        disqualifying_charges = [
+            (charge, case.years_passed_disposition())
+            for case in item.cases  # if item is a charge, this will throw exception.
+            for charge in case.charges
+            if (
+                (case.years_passed_disposition() < within_years)
+                and not no_failure_to_register(charge)
+            )
+        ]
+        decision = WaitDecision(
             name="No failure-to-register convictions in this record.",
-            reasoning=[
-                charge
-                for case in item.cases  # if item is a charge, this will throw exception.
-                for charge in case.charges
-                if (
-                    (case.years_passed_disposition() < within_years)
-                    and not no_failure_to_register(charge)
-                )
-            ],
+            reasoning=disqualifying_charges,
         )
         decision.value = True if len(decision.reasoning) < conviction_limit else False
+
+        if not decision.value:
+            most_recent_disqualifying_charge = min(
+                [(c, y) for c, y in disqualifying_charges], lambda c, y: y
+            )
+            years_to_wait = within_years - most_recent_disqualifying_charge
+            if years_to_wait > 0:
+                decision.years_to_wait = years_to_wait
+        else:
+            decision.years_to_wait = 0
         return decision
     # item is A Charge
     except Exception as err:
@@ -987,27 +1148,38 @@ def has_weapons_of_escape(crecord):
 
 def no_weapons_of_escape(
     crecord: CRecord, conviction_limit: int, within_years: int = 15
-) -> Decision:
+) -> WaitDecision:
     """
     Cannot seal if record contains conviction for possession of implement or weapon of escape within 15 years.
 
     18 PA.C.S. 9122.1(b)(2)(iii)(B)(IV)
     """
-    decision = Decision(
+    disqualifying_charges = [
+        (charge, case.years_passed_disposition())
+        for case in crecord.cases
+        for charge in case.charges
+        if (
+            case.years_passed_disposition() < within_years
+            and charge.is_conviction()
+            and charge.get_statute_chapter() == 18
+            and charge.get_statute_section() == 5122
+        )
+    ]
+    decision = WaitDecision(
         name="No possion-of-implement-of-escape convictions in this record.",
-        reasoning=[
-            charge
-            for case in crecord.cases
-            for charge in case.charges
-            if (
-                case.years_passed_disposition() < within_years
-                and charge.is_conviction()
-                and charge.get_statute_chapter() == 18
-                and charge.get_statute_section() == 5122
-            )
-        ],
+        reasoning=disqualifying_charges,
     )
     decision.value = True if len(decision.reasoning) < conviction_limit else False
+
+    if not decision.value:
+        most_recent_disqualifying_charge = min(
+            [(c, y) for c, y in disqualifying_charges], lambda c, y: y
+        )
+        years_to_wait = within_years - most_recent_disqualifying_charge
+        if years_to_wait > 0:
+            decision.years_to_wait = years_to_wait
+    else:
+        decision.years_to_wait = 0
     return decision
 
 
@@ -1023,27 +1195,38 @@ def has_abuse_of_corpse(crecord):
 
 def no_abuse_of_corpse(
     crecord: CRecord, conviction_limit: int, within_years: int = 15
-) -> Decision:
+) -> WaitDecision:
     """
     Cannot seal if record contains conviction for abuse of corpse within 15 years.
 
     18 PA.C.S. 9122.1(b)(2)(iii)(B)(V)
     """
-    decision = Decision(
+    disqualifying_charges = [
+        (charge, case.years_passed_disposition())
+        for case in crecord.cases
+        for charge in case.charges
+        if (
+            case.years_passed_disposition() < within_years
+            and charge.is_conviction()
+            and charge.get_statute_chapter() == 18
+            and charge.get_statute_section() == 5510
+        )
+    ]
+    decision = WaitDecision(
         name="No abuse of corpse convictions in this record.",
-        reasoning=[
-            charge
-            for case in crecord.cases
-            for charge in case.charges
-            if (
-                case.years_passed_disposition() < within_years
-                and charge.is_conviction()
-                and charge.get_statute_chapter() == 18
-                and charge.get_statute_section() == 5510
-            )
-        ],
+        reasoning=disqualifying_charges,
     )
     decision.value = True if len(decision.reasoning) < conviction_limit else False
+
+    if not decision.value:
+        most_recent_disqualifying_charge = min(
+            [(c, y) for c, y in disqualifying_charges], lambda c, y: y
+        )
+        years_to_wait = within_years - most_recent_disqualifying_charge
+        if years_to_wait > 0:
+            decision.years_to_wait = years_to_wait
+    else:
+        decision.years_to_wait = 0
     return decision
 
 
@@ -1060,27 +1243,40 @@ def has_paramilitary_training(crecord):
 
 def no_paramilitary_training(
     crecord: CRecord, conviction_limit: int, within_years: int = 15
-) -> Decision:
+) -> WaitDecision:
     """
     Cannot seal if record contains conviction for paramilitary training within 15 years.
 
     18 PA.C.S. 9122.1(b)(2)(iii)(B)(VI)
     """
-    decision = Decision(
+    disqualifying_cases = [
+        (charge, case.years_passed_disposition())
+        for case in crecord.cases
+        for charge in case.charges
+        if (
+            case.years_passed_disposition() < within_years
+            and charge.is_conviction()
+            and charge.get_statute_chapter() == 18
+            and charge.get_statute_section() == 5515
+        )
+    ]
+
+    decision = WaitDecision(
         name="No paramilitary training offenses in this record.",
-        reasoning=[
-            charge
-            for case in crecord.cases
-            for charge in case.charges
-            if (
-                case.years_passed_disposition() < within_years
-                and charge.is_conviction()
-                and charge.get_statute_chapter() == 18
-                and charge.get_statute_section() == 5515
-            )
-        ],
+        reasoning=disqualifying_cases,
     )
     decision.value = True if len(decision.reasoning) < conviction_limit else False
+
+    if not decision.value:
+
+        most_recent_disqualifying_charge = min(
+            [(c, y) for c, y in disqualifying_charges], lambda c, y: y
+        )
+        years_to_wait = within_years - most_recent_disqualifying_charge
+        if years_to_wait > 0:
+            decision.years_to_wait = years_to_wait
+    else:
+        decision.years_to_wait = 0
     return decision
 
 
@@ -1107,10 +1303,10 @@ def full_record_requirements_for_petition_sealing(crecord: CRecord) -> Decision:
         no_sexual_offense(
             crecord, penalty_limit=7, conviction_limit=1, within_years=20
         ),
-        offenses_punishable_by_two_or_more_years(
+        no_offenses_punishable_by_two_or_more_years(
             crecord, conviction_limit=4, within_years=20
         ),
-        offenses_punishable_by_two_or_more_years(
+        no_offenses_punishable_by_two_or_more_years(
             crecord, conviction_limit=2, within_years=15
         ),
         no_indecent_exposure(crecord, conviction_limit=1, within_years=15),
