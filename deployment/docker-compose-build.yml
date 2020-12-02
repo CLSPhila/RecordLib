@@ -33,6 +33,7 @@ services:
     volumes:
       - "staticfiles:/srv/static"
       - "protectedfiles:/protected"
+      - "media:/srv/media"
     networks:
       recordlib-net:
     env_file:
@@ -101,3 +102,4 @@ volumes:
   staticfiles:
   protectedfiles:
   mako:
+  media:
