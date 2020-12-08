@@ -8,7 +8,7 @@ import { makeStyles } from "@material-ui/core/styles";
 import Typography from "@material-ui/core/Typography";
 import Grid from "@material-ui/core/Grid";
 import Button from "@material-ui/core/Button";
-
+import Link from "@material-ui/core/Link"
 const useStyles = makeStyles((theme) => {
   return {
     paper: {
@@ -22,7 +22,7 @@ const useStyles = makeStyles((theme) => {
 });
 
 function UserProfile(props) {
-  const { fetchUserProfile, user } = props;
+  const { fetchUserProfile, user} = props;
   const {
     username,
     email,
@@ -34,9 +34,14 @@ function UserProfile(props) {
     default_atty_address_line_two,
     default_atty_phone,
     default_bar_id,
+    expungement_petition_template,
+    sealing_petition_template,
   } = user;
+
   const profileLoading = !username;
+
   const classes = useStyles();
+
 
   useEffect(() => {
     fetchUserProfile();
@@ -62,14 +67,12 @@ function UserProfile(props) {
             <Grid item xs={6}>
               <Typography variant="body1">{`${first_name} ${last_name}`}</Typography>
             </Grid>
-
             <Grid item xs={12}>
               <Typography variant="h5">Default Attorney information</Typography>
             </Grid>
             <Grid item xs={12}>
               <Typography variant="body2">
-                Will populate by default in petitions, unless you set something
-                different.
+                The attorney details here will populate by default in petitions you generate.
               </Typography>
             </Grid>
             <Grid item xs={6}>
@@ -96,6 +99,24 @@ function UserProfile(props) {
             <Grid item xs={6}>
               <Typography variant="body1">{default_bar_id}</Typography>
             </Grid>
+            <Grid item xs={12}>
+              <Typography variant="h5">Petition Template</Typography>
+            </Grid>
+            <Grid item xs={6}>
+            {expungement_petition_template ? 
+              <Link href={`api/record/templates/expungement/${expungement_petition_template}/`}>Expungement Petition Template</Link>
+            : <Typography variant="body1">No Expungment Template Set</Typography>
+            }
+              </Grid>
+            <Grid item xs={6}>
+              {
+                sealing_petition_template ? 
+                <Link href={`api/record/templates/sealing/${sealing_petition_template}/`}>Sealing Petition Template</Link>
+                : <Typography variant="body1">No Sealing Template Set</Typography>
+              }
+            </Grid>
+
+
           </Grid>
         )}
       </Paper>

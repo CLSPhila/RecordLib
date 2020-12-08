@@ -76,7 +76,7 @@ Or tell yarn to watch the frontend's files and rebuild the frontend as you edit 
 
 Project root:
 -------------
-The project directory needs a /protected directory, where petitions will be generated. 
+The project directory needs a /media directory, where petitions will be generated. 
 
 Python
 -------

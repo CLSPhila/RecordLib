@@ -14,6 +14,7 @@ COPY ./grades /srv/grades
 COPY ./RecordLib /srv/RecordLib
 COPY ./templates /srv/templates
 COPY ./frontend/bundles /srv/frontend/bundles
+COPY ./frontend/public /srv/frontend/public
 COPY ./webpack-stats.json /srv
 COPY ./manage.py /srv
 
@@ -26,17 +27,15 @@ RUN pip install pipenv && pipenv install --system && apt update && \
     useradd -ms /bin/bash gunicorn
     #chmod o+x /entrypoint.sh
 
-RUN mkdir -p /srv/static && \
+RUN mkdir -p /static && \
     mkdir -p /srv/media && \
-    mkdir -p /protected && \
     mkdir -p /mako && \
-    chown gunicorn:gunicorn /srv/static && \
-    chown gunicorn:gunicorn /srv/media  && \
+    chown gunicorn:gunicorn /static && \
     chown gunicorn:gunicorn /mako && \
-    chown gunicorn:gunicorn /protected
+    chown gunicorn:gunicorn /srv/media
 
 USER gunicorn
 
-ENV STATIC_ROOT /srv/static
+ENV STATIC_ROOT /static
 
 EXPOSE 8000

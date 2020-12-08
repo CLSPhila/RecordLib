@@ -1,9 +1,11 @@
 from __future__ import annotations
+import os
 import uuid
 import re
 import logging
 from typing import Optional
 from dataclasses import dataclass, asdict
+import uuid
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import InMemoryUploadedFile
@@ -21,11 +23,18 @@ from RecordLib.sourcerecords.summary.parse_pdf import (
 logger = logging.getLogger(__name__)
 
 
+def set_template_path(instance, filename):
+    path = "templates/"
+    unique_id = instance.uuid
+    return os.path.join(path, str(unique_id))
+
+
 class DocumentTemplate(models.Model):
     """Abstact model for storing a template for expungement or sealing petitions."""
 
     name = models.CharField(max_length=255)
-    file = models.FileField(upload_to="templates/")
+    uuid = models.UUIDField(primary_key=False, default=uuid.uuid4, editable=False)
+    file = models.FileField(upload_to=set_template_path)
     default = models.BooleanField(null=True)
 
     class Meta:
@@ -64,13 +73,13 @@ class UserProfile(models.Model):
     user = models.OneToOneField(to=User, on_delete=models.CASCADE)
     expungement_petition_template = models.ForeignKey(
         ExpungementPetitionTemplate,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         related_name="expugement_template_user_profiles",
     )
     sealing_petition_template = models.ForeignKey(
         SealingPetitionTemplate,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         related_name="sealing_petition_template_user_profiles",
     )

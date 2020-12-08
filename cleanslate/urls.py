@@ -11,6 +11,7 @@ from .views import (
     PetitionsView,
     UserProfileView,
     AutoScreeningView,
+    TemplateView,
 )
 
 urlpatterns = [
@@ -21,4 +22,5 @@ urlpatterns = [
     path("petitions/", PetitionsView.as_view()),
     path("profile/", UserProfileView.as_view()),
     path("screening/", AutoScreeningView.as_view()),
+    path("templates/<str:template_type>/<str:unique_id>/", TemplateView.as_view()),
 ]
