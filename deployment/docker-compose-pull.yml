@@ -1,5 +1,5 @@
 version: "3.7"
-# Pull the latest versions of the images, without building locally.
+# Run the RecordLib service by pulling the latest versions of the images from Dockerhub. Don't build them locally.
 services:
   frontend:
     image: natev/recordlibfrontend:latest
@@ -16,8 +16,8 @@ services:
         target: /srv/static
         read_only: true
       - type: volume
-        source: protectedfiles
-        target: /protected
+        source: media
+        target: /srv/media
         read_only: true
     networks:
       recordlib-net:
@@ -26,8 +26,8 @@ services:
     expose:
       - 8000
     volumes:
-      - "staticfiles:/srv/static"
-      - "protectedfiles:/protected"
+      - "staticfiles:/static"
+      - "media:/srv/media"
     networks:
       recordlib-net:
     env_file:
@@ -48,6 +48,8 @@ services:
     networks:
       recordlib-net:
     command: bash -c "python manage.py migrate --noinput && python manage.py init_petitions && python manage.py init_admin"
+    volumes:
+      - "media:/srv/media"
     depends_on:
       - pg_db
   django_q:
@@ -88,5 +90,5 @@ networks:
 volumes:
   dbdata:
   staticfiles:
-  protectedfiles:
   mako:
+  media:

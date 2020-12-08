@@ -14,12 +14,12 @@ class Compressor:
     def __init__(self, zip_name: str, file_tuple: List[Tuple[str, DocxTemplate]]):
         """ need to store all the files in file_tuple to a zip named zip_name """
         with tempfile.TemporaryDirectory() as tempdir:
-            zip_path = os.path.join(settings.PROTECTED_ROOT, zip_name)
-            with zipfile.ZipFile(zip_path, 'w') as zipf:
+            zip_path = os.path.join(settings.MEDIA_ROOT, zip_name)
+            with zipfile.ZipFile(zip_path, "w") as zipf:
                 for file_name, docxtemplate in file_tuple:
                     complete_file_name = os.path.join(tempdir, file_name)
                     docxtemplate.save(complete_file_name)
                     zipf.write(complete_file_name, arcname=file_name)
-            self.compressed_files = File(zip_path) 
+            self.compressed_files = File(zip_path)
             self.path = zip_path
             self.name = zip_name

@@ -6,11 +6,10 @@
  */
 
 import { ANALYZE_CRECORD_SUCCEEDED } from "frontend/src/actions/crecord";
-import { ANALYZE_CRECORD_SUCCEDED } from "../actions/crecord";
 
 export default function analysisReducer(state = {}, action) {
   switch (action.type) {
-    case ANALYZE_CRECORD_SUCCEDED: {
+    case ANALYZE_CRECORD_SUCCEEDED: {
       console.log("Analyzing record succeeded. We got back: ");
       console.log(action.payload);
       return action.payload;

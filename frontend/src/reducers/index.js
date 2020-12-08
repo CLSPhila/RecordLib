@@ -11,6 +11,7 @@ import analysisReducer from "./analysis";
 import petitionsReducer from "./petitions";
 import gradePredictionReducer from "./grades";
 import messageReducer from "./messages";
+import templatesReducer from "./petitionTemplates";
 
 const rootReducer = combineReducers({
   user: userReducer, // the current user.
@@ -24,6 +25,7 @@ const rootReducer = combineReducers({
   ujsSearchResults: ujsSearchReducer, //  results from searching the public ujs portal.
   gradePredictions: gradePredictionReducer, // results from guessing grades of charges
   message: messageReducer, // messages for user.
+  templates: templatesReducer,  // Template documents for generating petitions. 
 });
 
 export default rootReducer;

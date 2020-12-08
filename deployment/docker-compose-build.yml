@@ -1,4 +1,5 @@
 version: "3.7"
+# Build and run the full RecordLib web application.
 services:
   frontend:
     build:
@@ -15,11 +16,11 @@ services:
     volumes:
       - type: volume
         source: staticfiles
-        target: /srv/static
+        target: /srv/static # this is where nginx expects static files will be
         read_only: true
       - type: volume
-        source: protectedfiles
-        target: /protected
+        source: media
+        target: /srv/media
         read_only: true
     networks:
       recordlib-net:
@@ -31,8 +32,8 @@ services:
     expose:
       - 8000
     volumes:
-      - "staticfiles:/srv/static"
-      - "protectedfiles:/protected"
+      - "staticfiles:/static"
+      - "media:/srv/media"
     networks:
       recordlib-net:
     env_file:
@@ -55,7 +56,8 @@ services:
       - PSQL_HOST=pg_db
     networks:
       recordlib-net:
-    #command: python manage.py migrate --noinput
+    volumes:
+      - "media:/srv/media"
     command: bash -c "python manage.py migrate --noinput && python manage.py init_petitions && python manage.py init_admin"
     depends_on:
       - pg_db
@@ -99,5 +101,5 @@ networks:
 volumes:
   dbdata:
   staticfiles:
-  protectedfiles:
   mako:
+  media:

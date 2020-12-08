@@ -3,8 +3,10 @@ Views for the Recordlib webapp.
 
 """
 from typing import Tuple, List
+import os
 import logging
 from django.http import HttpResponse
+from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
@@ -24,7 +26,12 @@ from RecordLib.analysis.ruledefs import (
     seal_convictions,
 )
 from RecordLib.petitions import Expungement, Sealing
-from cleanslate.models import User, UserProfile
+from cleanslate.models import (
+    User,
+    UserProfile,
+    ExpungementPetitionTemplate,
+    SealingPetitionTemplate,
+)
 from cleanslate.serializers import (
     CRecordSerializer,
     PetitionViewSerializer,
@@ -35,6 +42,7 @@ from cleanslate.serializers import (
     SourceRecordSerializer,
     DownloadDocsSerializer,
     AutoScreeningSerializer,
+    TemplateSerializer,
 )
 from cleanslate.compressor import Compressor
 from cleanslate.services import download as download_service
@@ -324,6 +332,116 @@ class AnalysisView(APIView):
             return Response({"errors": str(err)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class UserProfileView(APIView):
+    """Information about a user's account.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """
+        Get the currently logged in user's profile information.
+        """
+        user = User.objects.get(id=request.user.id)
+        profile = UserProfile.objects.get(user=user)
+        profile_data = UserProfileSerializer(profile).data
+        profile_data["expungement_petition_template"] = str(
+            profile.expungement_petition_template.uuid
+        )
+        profile_data["sealing_petition_template"] = str(
+            profile.sealing_petition_template.uuid
+        )
+        return Response(
+            {
+                "user": UserSerializer(user).data,
+                "profile": profile_data,
+                "expungement_petition_template_options": {
+                    str(t.uuid): {
+                        "id": str(t.uuid),
+                        "name": t.name,
+                        "petition_type": "expungement",
+                    }
+                    for t in ExpungementPetitionTemplate.objects.all()
+                },
+                "sealing_petition_template_options": {
+                    str(t.uuid): {
+                        "id": str(t.uuid),
+                        "name": t.name,
+                        "petition_type": "sealing",
+                    }
+                    for t in SealingPetitionTemplate.objects.all()
+                },
+            }
+        )
+
+    def put(self, request):
+        """Update information about the logged in user's account."""
+
+        user = User.objects.get(id=request.user.id)
+        user_serializer = UserSerializer(user, data=request.data)
+
+        profile = UserProfile.objects.get(user=user)
+        profile_serializer = UserProfileSerializer(profile, data=request.data)
+        if user_serializer.is_valid() and profile_serializer.is_valid():
+            user_serializer.save()
+
+            # Replace the requests's UUID identifying a petition template
+            # with the actual petition template that the .save() method needs.
+            try:
+                exp_petition_template = ExpungementPetitionTemplate.objects.get(
+                    uuid=profile_serializer.validated_data[
+                        "expungement_petition_template"
+                    ]
+                )
+                profile_serializer.validated_data[
+                    "expungement_petition_template"
+                ] = exp_petition_template
+            except:
+                profile_serializer.validated_data.pop("exp_petition_template")
+
+            try:
+                sealing_petition_template = SealingPetitionTemplate.objects.get(
+                    uuid=profile_serializer.validated_data["sealing_petition_template"]
+                )
+                profile_serializer.validated_data[
+                    "sealing_petition_template"
+                ] = sealing_petition_template
+            except:
+                profile_serializer.validated_data.pop("sealing_petition_template")
+
+            profile_serializer.save()
+            # Should we return the user and profile here?
+            return Response({"message": "Successful update"})
+
+        return Response(
+            {
+                "errors": {
+                    "user": user_serializer.errors,
+                    "profile": profile_serializer.errors,
+                }
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+class AutoScreeningView(APIView):
+    """
+    Trigger an automated screening of a person's record.
+    """
+
+    def post(self, request):
+        """
+        Receive a name, dob, and email address, and send an automated review of a person's public record
+        to the email address.
+        """
+        screening_request = AutoScreeningSerializer(data=request.data)
+        if screening_request.is_valid():
+            async_task(cleanslate_screen.by_name, **screening_request.validated_data)
+            return Response({"status": "screening started."})
+        else:
+            return Response({"status": screening_request.errors})
+
+
 class PetitionsView(APIView):
     """ Create petitions and an Overview document from an Analysis.
     
@@ -386,7 +504,19 @@ class PetitionsView(APIView):
                 resp = HttpResponse()
                 resp["Content-Type"] = "application/zip"
                 resp["Content-Disposition"] = f"attachment; filename={package.name}"
-                resp["X-Accel-Redirect"] = f"/protected/{package.name}"
+                logger.info(
+                    "Redirecting to: '/%s'",
+                    os.path.join(settings.MEDIA_URL, package.name),
+                )
+
+                # Add the x-accel-redirect header, with a path to /media/
+                # This /media/ path will be internally intercepted by the
+                # nginx frontend's 'internal' block, and serve a file from
+                # the location configured in the nginx.conf
+
+                resp["X-Accel-Redirect"] = "/" + os.path.join(
+                    settings.MEDIA_URL, package.name
+                )
                 return resp
             else:
                 return Response(
@@ -403,64 +533,29 @@ class PetitionsView(APIView):
             )
 
 
-class UserProfileView(APIView):
-    """Information about a user's account.
+class TemplateView(APIView):
+    """
+    Download a stored document template. 
     """
 
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
-        """
-        Get the currently logged in user's profile information.
-        """
-        user = User.objects.get(id=request.user.id)
-        profile = UserProfile.objects.get(user=user)
-        return Response(
-            {
-                "user": UserSerializer(user).data,
-                "profile": UserProfileSerializer(profile).data,
-            }
+    def get(self, request, template_type, unique_id):
+        if template_type == "sealing":
+            petition = SealingPetitionTemplate.objects.get(uuid=unique_id)
+        elif template_type == "expungement":
+            petition = ExpungementPetitionTemplate.objects.get(uuid=unique_id)
+        resp = HttpResponse()
+        resp[
+            "Content-Type"
+        ] = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        resp["Content-Disposition"] = f"attachment; filename={petition.name}"
+        # send the redirect-proxy url, which will be like [media_root]/path/to/[file_uid]
+        logger.info(
+            "Redirecting to: '/%s'",
+            os.path.join(settings.MEDIA_URL, petition.file.name),
         )
-
-    def put(self, request):
-        """Update information about the logged in user's account."""
-
-        user = User.objects.get(id=request.user.id)
-        user_serializer = UserSerializer(user, data=request.data)
-
-        profile = UserProfile.objects.get(user=user)
-        profile_serializer = UserProfileSerializer(profile, data=request.data)
-        if user_serializer.is_valid() and profile_serializer.is_valid():
-            user_serializer.save()
-            profile_serializer.save()
-            # Should we return the user and profile here?
-            return Response({"message": "Successful update"})
-
-        return Response(
-            {
-                "errors": {
-                    "user": user_serializer.errors,
-                    "profile": profile_serializer.errors,
-                }
-            },
-            status=status.HTTP_400_BAD_REQUEST,
+        resp["X-Accel-Redirect"] = "/" + os.path.join(
+            settings.MEDIA_URL, petition.file.name
         )
-
-
-class AutoScreeningView(APIView):
-    """
-    Trigger an automated screening of a person's record.
-    """
-
-    def post(self, request):
-        """
-        Receive a name, dob, and email address, and send an automated review of a person's public record
-        to the email address.
-        """
-        screening_request = AutoScreeningSerializer(data=request.data)
-        if screening_request.is_valid():
-            async_task(cleanslate_screen.by_name, **screening_request.validated_data)
-            return Response({"status": "screening started."})
-        else:
-            return Response({"status": screening_request.errors})
-
+        return resp

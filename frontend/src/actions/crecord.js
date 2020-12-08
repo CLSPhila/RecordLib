@@ -16,14 +16,14 @@ import { newMessage } from "./messages";
 export const UPDATE_CRECORD = "UPDATE_CRECORD";
 export const UPDATE_CRECORD_SUCCEEDED = "UPDATE_CRECORD_SUCCEEDED";
 export const FETCH_CRECORD_SUCCEEDED = "FETCH_CRECORD_SUCCEEDED";
-export const ANALYZE_CRECORD_SUCCEDED = "ANALYZE_CRECORD_SUCCEDED";
+export const ANALYZE_CRECORD_SUCCEEDED = "ANALYZE_CRECORD_SUCCEDED";
 
 function analyzeRecordsSucceeded(analysis) {
-  // TODO - do we need to normalize 'data' here? Its an analysis from the server, so its pretty deeply
-  // nested. But we won't edit it, I think.
+  // normalizeAnalysis just pulls out the petitions that the analysis thinks can be generated, 
+  // and makes them their own key in the payload of this action.
   const normalizedAnalysis = normalizeAnalysis(analysis);
   return {
-    type: ANALYZE_CRECORD_SUCCEDED,
+    type: ANALYZE_CRECORD_SUCCEEDED,
     payload: normalizedAnalysis,
   };
 }

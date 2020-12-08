@@ -44,7 +44,6 @@ yarn-debug.log*
 yarn-error.log*
 static
 media
-protected
 
 webpack-stats.json
 

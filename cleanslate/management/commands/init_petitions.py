@@ -8,23 +8,9 @@ import secrets
 import logging
 from django.core.management.base import BaseCommand, CommandError
 from cleanslate.models import SealingPetitionTemplate, ExpungementPetitionTemplate
-from django.core.files import File
+from cleanslate.services.initializers import create_default_petition
 
 logger = logging.getLogger(__name__)
-
-
-def create_default_petition(TemplateModel, template_path, new_name):
-    default_petitions = TemplateModel.objects.filter(default=True)
-    if len(default_petitions) == 0:
-        # if no exp. petition default, create one.
-        with open(template_path, "rb") as pet:
-            new_petition = File(pet)
-            new_petition.name = new_name
-            template_model = TemplateModel(
-                name=new_name, file=new_petition, default=True
-            )
-            template_model.save()
-            return template_model
 
 
 class Command(BaseCommand):

@@ -1,5 +1,6 @@
 # This docker-compose is for locally building and running the RecordLib web services.
-# N.B. It currently doesn't rebuild the frontend live.
+# N.B. It currently doesn't rebuild the frontend live, but it does allow for live editing of the
+# backend.
 version: "3.7"
 services:
   frontend:
@@ -18,8 +19,8 @@ services:
         target: /srv/static
         read_only: true
       - type: volume
-        source: protectedfiles
-        target: /protected
+        source: media
+        target: /srv/media
         read_only: true
     env_file:
       - .docker.env
@@ -34,9 +35,9 @@ services:
       - 8000
     volumes:
       - type: volume
-        source: protectedfiles
-        target: /protected
-      - "staticfiles:/srv/static"
+        source: media
+        target: /srv/media
+      - "staticfiles:/static"
       - type: bind
         source: ../
         target: /srv
@@ -59,6 +60,11 @@ services:
     restart: on-failure
     networks:
       recordlib-net:
+    volumes:
+      - type: volume
+        source: media
+        target: /srv/media
+
     command: bash -c "python manage.py migrate --noinput && python manage.py init_petitions && python manage.py init_admin"
     env_file:
       - .docker.env
@@ -107,5 +113,5 @@ networks:
 volumes:
   dbdata:
   staticfiles:
-  protectedfiles:
   mako:
+  media:

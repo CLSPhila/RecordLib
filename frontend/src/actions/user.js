@@ -6,7 +6,7 @@ export const UPDATE_USER_PROFILE = "UPDATE_USER_PROFILE";
 
 export function fetchUserProfileSucceeded(profileData) {
   return {
-    type: "FETCH_USER_PROFILE_SUCCEEDED",
+    type: FETCH_USER_PROFILE_SUCCEEDED,
     payload: profileData,
   };
 }

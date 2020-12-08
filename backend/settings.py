@@ -35,8 +35,8 @@ USE_X_FORWARDED_HOST = os.environ.get("USE_X_FORWARDED_HOST") == "TRUE"
 STATICFILES_DIRS = (os.path.join(BASE_DIR, "frontend"),)
 
 MEDIA_ROOT = os.environ["MEDIA_ROOT"]
-
-PROTECTED_ROOT = os.environ["PROTECTED_ROOT"]
+# media_url needs to match the nginx frontend's config for the internal/x-accel block.
+MEDIA_URL = "media/"
 
 WEBPACK_LOADER = {"DEFAULT": {"BUNDLE_DIR_NAME": "bundles/",}}
 

@@ -44,8 +44,8 @@ class PetitionDecision(Decision):
     """
 
     def __init__(self, *args, **kwargs):
-        self.type = "Petition"
         super().__init__(*args, **kwargs)
+        self.type = "Petition"
 
     def get_cases(self) -> [Case]:
         """
@@ -83,8 +83,8 @@ class RecordEligibilityDecision(Decision):
     """
 
     def __init__(self, *args, **kwargs):
-        self.type = "Eligibility"
         super().__init__(*args, **kwargs)
+        self.type = "Eligibility"
 
     def get_cases(self) -> [Case]:
         """
@@ -102,8 +102,8 @@ class FilterDecision(Decision):
     """
 
     def __init__(self, *args, **kwargs):
-        self.type = "Filter"
         super().__init__(*args, **kwargs)
+        self.type = "Filter"
 
     def get_cases(self) -> [Case]:
         """

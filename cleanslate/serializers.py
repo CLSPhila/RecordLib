@@ -18,6 +18,11 @@ class UserSerializer(S.ModelSerializer):
         fields = ["username", "email", "first_name", "last_name"]
 
 
+class TemplateSerializer:
+    id = S.UUIDField()
+    template_type = S.RegexField("expungement|sealing")
+
+
 class UserProfileSerializer(S.ModelSerializer):
     class Meta:
         model = UserProfile
@@ -29,6 +34,8 @@ class UserProfileSerializer(S.ModelSerializer):
             "default_atty_address_line_two",
             "default_atty_phone",
             "default_bar_id",
+            "expungement_petition_template",
+            "sealing_petition_template",
         ]
 
     default_atty_organization = S.CharField(allow_blank=True)
@@ -37,6 +44,8 @@ class UserProfileSerializer(S.ModelSerializer):
     default_atty_address_line_one = S.CharField(allow_blank=True)
     default_atty_phone = S.CharField(allow_blank=True)
     default_bar_id = S.CharField(allow_blank=True)
+    sealing_petition_template = S.UUIDField(allow_null=True)
+    expungement_petition_template = S.UUIDField(allow_null=True)
 
 
 """
