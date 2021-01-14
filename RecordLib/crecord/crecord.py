@@ -175,8 +175,10 @@ class CRecord:
         """
         for case in self.cases:
             for ch_idx, charge in enumerate(case.charges):
-                if charge.disposition and re.search(
-                    "held for court", charge.disposition, re.I
+                if (
+                    charge.disposition
+                    and re.search("held for court", charge.disposition, re.I)
+                    or re.search("waived for court", charge.disposition, re.I)
                 ):
                     # try to find another charge that matches this one, using the OTN.
                     other_cases = self.find_case_by_otn(
