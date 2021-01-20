@@ -190,9 +190,10 @@ class EmailBuilder:
         True if there were traffic court cases filtered out of the record.
         """
         traffic_cases = [
-            d.value
+            case
             for d in self.analysis.decisions
             if d.name == "Traffic Court cases removed from consideration."
+            for case in d.value
         ]
         if len(traffic_cases) > 0:
             return True

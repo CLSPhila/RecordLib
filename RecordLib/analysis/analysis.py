@@ -139,7 +139,7 @@ def summarize(analysis: Analysis) -> dict:
         if len(case["charges"].items()) == 0:
             case[
                 "next_steps"
-            ] = "This case may be related to another (such as through a transfer), and sealing or expunging the other case may seal or expunge this one as well."
+            ] = "The software was not able to find any charges in this case. This case may be a civil case unrelated to criminal charges. Or this case may be related to another (such as through a transfer), in which case sealing or expunging the other case may seal or expunge this one as well."
         for sequence, charge in case["charges"].items():
             if case["next_steps"] == "" and charge["next_steps"] == "":
                 if any(
@@ -483,6 +483,7 @@ def update_summary_for_sealing_convictions(
                         next_step = f"{max_time_to_wait.reasoning} Sealing this charge immeditately may require a pardon first."  # This charge may become eligible for sealing in {max_time_to_wait.years_to_wait} years."
                     else:
                         # Charge is not sealable.
+                        breakpoint()
                         next_step = "This charge does not appear eligible for sealing."
                     summary = set_next_step(
                         summary, docket_number, sequence, next_step=next_step
