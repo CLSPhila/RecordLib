@@ -2,7 +2,7 @@ from typing import Union, BinaryIO, Tuple, Callable, List, Optional
 import re
 import logging
 from RecordLib.crecord import Person, Case, Charge
-from RecordLib.sourcerecords.parsingutilities import get_text_from_pdf
+from RecordLib.sourcerecords.parsingutilities import get_text_from_pdf, money_or_none
 
 
 logger = logging.getLogger(__name__)
@@ -45,6 +45,9 @@ class PATTERNS:
     costs = re.compile(
         r"Totals:\s+\\$([\d\,]+\.\d{2})\s+-?\(?\\$([\d\,]+\.\d{2})\)?\s+-?\(?\\$([\d\,]+\.\d{2})\)?\s+-?\(?\\$([\d\,]+\.\d{2})\)?\s+-?\(?\\$([\d\,]+\.\d{2})\)?",
         re.I,
+    )
+    non_traffic_costs = re.compile(
+        r"Case Balance:\s+\$(?P<balance>[\d\,]+\.\d{2})\s+.*", re.I
     )
 
 
@@ -189,10 +192,16 @@ def parse_mdj_pdf_text(txt: str) -> Tuple[Person, List[Case], List[str]]:
 
         m = PATTERNS.costs.search(line)
         if m:
-            case_info["total_fines"] = m.group(1)
-            case_info["fines_paid"] = m.group(2)
-            case_info["costs_adjusted"] = m.group(3)
-            case_info["costs_total"] = m.group(5)
+            case_info["total_fines"] = money_or_none(m.group(1))
+            case_info["fines_paid"] = money_or_none(m.group(2))
+            case_info["costs_adjusted"] = money_or_none(m.group(3))
+            case_info["costs_total"] = money_or_none(m.group(5))
+
+        m = PATTERNS.non_traffic_costs.search(line)
+        if m:
+            case_info["total_fines"] = money_or_none(m.group("balance"))
+            case_info["fines_paid"] = 0
+
     case_info = {
         k: (v.strip() if isinstance(v, str) else v) for k, v in case_info.items()
     }

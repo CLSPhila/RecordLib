@@ -469,7 +469,7 @@ def update_summary_for_sealing_convictions(
                     )
 
                     next_step = ""
-                    if not fines_all_paid:
+                    if fines_all_paid is not None and bool(fines_all_paid) is False:
                         next_step = f"{fines_all_paid.reasoning} Fines remaining on this case must be resolved before the charge can be sealed."
                         if wait_decisions:
                             # there are fines to pay, and the person must wait for some time to seal.
