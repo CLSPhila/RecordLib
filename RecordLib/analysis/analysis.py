@@ -276,9 +276,9 @@ def update_summary_for_nonconviction_expungements(
 
 def get_decision_by_name(ds: List[Decision], name: str) -> Optional[Decision]:
     """
-    Find a decision in a list of decision with its name.
+    Find a decision in a list of decision with a matching name. The name can be a regex pattern. 
     """
-    return [d for d in ds if d.name == name]
+    return [d for d in ds if re.match(name, d.name)]
 
 
 def negative_decisions_only(decisions: List[Decision]) -> [Decision]:
@@ -353,7 +353,7 @@ def fines_and_wait_for_sealing(
     """
     Takes a Decision about a case and a decision about the full record, and returns the fines decision and a list of any decisions at the base of this
         Decision that have (remember, Decisons' `reasoning` might be more Decisions)
-        waiting times. 
+        waiting times or fines. 
         
     It'll only return these decisions if fines and WaitDecisions are the only 
         Decisions preventing sealing. 
@@ -363,11 +363,13 @@ def fines_and_wait_for_sealing(
         full_record_decision: There are a number of Decisions about whether the person must wait before anything in the record is eligible for sealing.
     """
 
-    fines_decision = get_decision_by_name(
-        case_decision.reasoning, "Are all fines and costs paid for these cases?"
+    # Note: for some reason, the decision indicating if a 'case' has disqualifying fines is the first decision in the
+    #       reasoning of the _charge_.
+    fines_decisions = get_decision_by_name(
+        charge_decision.reasoning, r"Fines and costs are all paid on the case .*"
     )
     try:
-        fines_decision = fines_decision[0]
+        fines_decision = fines_decisions[0]
     except IndexError:
         fines_decision = None
 
@@ -458,13 +460,13 @@ def update_summary_for_sealing_convictions(
                     #   At that point, we'll have the decision about fines, and a list of decisions that will flip their value after waiting.
                     #       We can tell the user "you've got to pay xxx", and "You've got to wait for yyy"
 
-                    fines_left, wait_decisions = fines_and_wait_for_sealing(
+                    fines_all_paid, wait_decisions = fines_and_wait_for_sealing(
                         charge_decision, case_decision, full_record_decision
                     )
 
                     next_step = ""
-                    if fines_left:
-                        next_step = f"{fines_left.reasoning} Fines remaining on this case must be resolved before the charge can be sealed."
+                    if not fines_all_paid:
+                        next_step = f"{fines_all_paid.reasoning} Fines remaining on this case must be resolved before the charge can be sealed."
                         if wait_decisions:
                             # there are fines to pay, and the person must wait for some time to seal.
                             max_time_to_wait = max(
@@ -483,7 +485,6 @@ def update_summary_for_sealing_convictions(
                         next_step = f"{max_time_to_wait.reasoning} Sealing this charge immeditately may require a pardon first."  # This charge may become eligible for sealing in {max_time_to_wait.years_to_wait} years."
                     else:
                         # Charge is not sealable.
-                        breakpoint()
                         next_step = "This charge does not appear eligible for sealing."
                     summary = set_next_step(
                         summary, docket_number, sequence, next_step=next_step
