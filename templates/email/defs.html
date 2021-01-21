@@ -8,7 +8,7 @@
         <div style="padding-bottom: 0">
             <p>
                 <p>
-                    <b> Case: ${ case.docket_number }</b>
+                    <b> Case: <a href="${ case.docket_url }"> ${ case.docket_number } </a></b>
                     %if (caseExist(case, cases)):
                         (not eligible for completely sealing or expunging)
                     %endif

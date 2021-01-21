@@ -86,7 +86,11 @@ def summarize(analysis: Analysis) -> dict:
 
     summary["cases"] = dict()
     for case in crecord.cases:
-        summary["cases"][case.docket_number] = {"next_steps": "", "charges": dict()}
+        summary["cases"][case.docket_number] = {
+            "next_steps": "",
+            "docket_url": case.docket_url,
+            "charges": dict(),
+        }
         for charge in case.charges:
             summary["cases"][case.docket_number]["charges"][charge.sequence] = {
                 "offense": charge.offense,

@@ -32,6 +32,7 @@ class Case:
     related_cases: List[
         str
     ]  # an optional list of docket numbers of cases that are related to this one, such as cases that were transferred and concluded here.
+    docket_url: Optional[str] = None
 
     @staticmethod
     def from_dict(dct: str) -> Optional[Case]:
@@ -57,6 +58,7 @@ class Case:
                 arresting_agency=dct.get("arresting_agency"),
                 arresting_agency_address=dct.get("arresting_agency_address"),
                 related_cases=dct.get("related_cases", []),
+                docket_url=dct.get("docket_url", None),
             )
         except:
             return None
@@ -80,6 +82,7 @@ class Case:
         arresting_agency_address=None,
         complaint_date=None,
         related_cases=None,
+        docket_url=None,
     ) -> None:
         self.docket_number = docket_number
         self.otn = otn
@@ -99,6 +102,7 @@ class Case:
         self.affiant = affiant
         self.arresting_agency = arresting_agency
         self.arresting_agency_address = arresting_agency_address
+        self.docket_url = docket_url
         if related_cases is None:
             self.related_cases = []
         else:
@@ -176,6 +180,7 @@ class Case:
             arresting_agency=self.arresting_agency,
             arresting_agency_address=self.arresting_agency_address,
             related_cases=self.related_cases,
+            docket_url=self.docket_url,
         )
 
     def merge(self, other_case: Case) -> Case:

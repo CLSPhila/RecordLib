@@ -152,7 +152,8 @@ def by_name(
     logger.info(
         f"    Searched summaries and found {len(new_docket_numbers)} cases not found through portal."
     )
-
+    # Append the new-found docket numbers to the list of search results we need to collect and
+    # add to the crecord we're building here.
     for dn in new_docket_numbers:
         cases = search_by_docket(dn)
         if len(cases) > 0:
@@ -183,13 +184,18 @@ def by_name(
     crecord = CRecord(
         person=Person(first_name=first_name, last_name=last_name, date_of_birth=dob)
     )
+    # building a crecord out of the docket sheets here.
     for case in search_results:
         parser = pick_pdf_parser(case["docket_number"])
         if parser is None:
             continue
-        sr = SourceRecord(case["docket_sheet_text"], parser)
-        sourcerecords.append(sr)
-        crecord.add_sourcerecord(sr)
+        src = SourceRecord(case["docket_sheet_text"], parser)
+        for parsed_case in src.cases:
+            # Adding the docket sheet url back into the cases the sourcerecord parses out.
+            # Here, this will will only be a single case.
+            parsed_case.docket_url = case["docket_sheet_url"]
+        sourcerecords.append(src)
+        crecord.add_sourcerecord(src)
 
     logger.info("Built CRecord.")
     # Create and Analysis using the CRecord. This Analysis will explain

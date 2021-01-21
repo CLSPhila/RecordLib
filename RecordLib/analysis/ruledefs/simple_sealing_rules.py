@@ -333,7 +333,7 @@ def fines_and_costs_paid(case: Case) -> Decision:
             decision.value = False
             decision.reasoning += f"The software could not find fines and costs, so we're not sure if this case has fines. "
 
-        if case.fines_paid is None:
+        elif case.fines_paid is None:
             decision.value = False
             decision.reasoning += f"The software could not find fines and costs, so we're not sure if this case has any fines paid."
         return decision

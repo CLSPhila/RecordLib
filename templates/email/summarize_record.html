@@ -39,7 +39,7 @@ ${defs.write_search_details()}
 
 <h2>Summary of our automated review</h2>
 % for dock_num, case in summary["cases"].items():
-    <h3>${dock_num}</h3>
+    <h3><a href="${case['docket_url']}" target="_blank">${dock_num}</a></h3>
     % if case["next_steps"] != "":
     <p>
         <b> Next Steps: </b>${case["next_steps"]}
