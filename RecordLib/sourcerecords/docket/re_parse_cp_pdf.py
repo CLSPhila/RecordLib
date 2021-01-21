@@ -270,7 +270,7 @@ def parse_disposition_section(
         errs.append("Could not find the disposition/sentencing section.")
         return {}, errs
     charges = []
-    charges_pattern = r"(?P<sequence>\d)\s+\/\s+(?P<offense>.+)\s{12,}(?P<disposition>\w.+?)(?=\s\s)\s{12,}(?P<grade>\w{0,2})\s+(?P<statute>\w{1,2}\s?\u00A7\s?\d+(\-|\u00A7|\w+)*)"
+    charges_pattern = r"(?P<sequence>[\d,]+)\s+\/\s+(?P<offense>.+)\s{12,}(?P<disposition>\w.+?)(?=\s\s)\s{12,}(?P<grade>\w{0,2})\s+(?P<statute>\w{1,2}\s?\u00A7\s?\d+(\-|\u00A7|\w+)*)"
     # there may be multiple disposition sections
     for disposition_section in disposition_sections:
         section_text = disposition_section[0]
