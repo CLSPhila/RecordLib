@@ -477,12 +477,9 @@ def update_summary_for_sealing_convictions(
                                 wait_decisions, key=lambda d: d.years_to_wait
                             )
                             # TODO - the WaitDecisions need 'reasoning' that's text, not a list of the disqualifying convictions.
-                            next_step += f" In addition, it looks like you must wait {max_time_to_wait.years_to_wait} before eligibility. {max_time_to_wait.reasoning}"
-                            summary = set_next_step(
-                                summary, docket_number, sequence, next_step
-                            )
+                            next_step += f" In addition, it looks like you must wait {max_time_to_wait.years_to_wait} years before eligibility, because of other charges on your record."  # I cut this for verbosity: {max_time_to_wait.reasoning}"
                     elif wait_decisions:
-                        # Person must wait for time to pass, before sealing.
+                        # Person must wait for time to pass, before sealing, but there arent' fines to pay.
                         max_time_to_wait = max(
                             wait_decisions, key=lambda d: d.years_to_wait
                         )
