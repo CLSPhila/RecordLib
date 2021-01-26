@@ -251,7 +251,7 @@ def seal_convictions(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]:
         case_decision = Decision(
             name=f"Sealing case {case.docket_number}", reasoning=[]
         )
-        fines_decision = ssr.fines_and_costs_paid(case)  # 18 Pa.C.S. 9122.1(a)
+        fines_decision = ssr.restitution_paid(case)  # 18 Pa.C.S. 9122.1(a)
         # case_decision.reasoning.append(fines_decision)
         # create copies of a case that don't include any charges.
         # sealable or unsealable charges will be added to these.
@@ -332,8 +332,5 @@ def seal_convictions(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]:
             mod_rec.cases.append(unsealable_parts_of_case)
         case_decision.reasoning.extend(charge_decisions)
         conclusion.reasoning.append(case_decision)
-    else:
-        # the global conditions for sealing failed, so the modified record should contain all the cases.
-        mod_rec.cases = crecord.cases
     return mod_rec, conclusion
 

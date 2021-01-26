@@ -14,6 +14,7 @@ from RecordLib.crecord import CRecord
 from RecordLib.sourcerecords import SourceRecord
 from RecordLib.sourcerecords.docket.re_parse_cp_pdf import parse_cp_pdf_text
 from RecordLib.sourcerecords.docket.re_parse_mdj_pdf import parse_mdj_pdf_text
+from RecordLib.sourcerecords.summary.parse_pdf import parse_pdf as parse_summary_pdf
 from RecordLib.sourcerecords.parsingutilities import get_text_from_pdf
 from RecordLib.analysis import Analysis
 from RecordLib.analysis import ruledefs as rd
@@ -24,20 +25,24 @@ from RecordLib.utilities.cleanslate_screen import by_name
 logger = logging.getLogger(__name__)
 
 
-def pick_pdf_parser(docket_num):
+def pick_pdf_parser(docket_num, doctype="docket"):
     """
     Choose the appropriate parser function to use, based on a docket number.
     
     For example, if the docket number is CP-12-CR-12345-2010, the common pleas parser would
     be the right choice.
     """
-    if "CP" in docket_num or "MC" in docket_num:
-        parser = parse_cp_pdf_text
-    elif "MJ" in docket_num:
-        parser = parse_mdj_pdf_text
+    parser = None
+    if doctype == "docket":
+        if "CP" in docket_num or "MC" in docket_num:
+            parser = parse_cp_pdf_text
+        elif "MJ" in docket_num:
+            parser = parse_mdj_pdf_text
+        else:
+            logger.error(f"   Cannot determine the right parser for: {docket_num}")
     else:
-        logger.error(f"   Cannot determine the right parser for: {docket_num}")
-        parser = None
+        parser = parse_summary_pdf
+
     return parser
 
 

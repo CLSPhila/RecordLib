@@ -66,7 +66,7 @@ def no_danger_to_person_offense(
                     within_years=within_years,
                     penalty_limit=penalty_limit,
                     conviction_limit=conviction_limit,
-                    arrest_date=case.arrest_date,
+                    arrest_date=case.arrest_date or case.disposition_date,
                 )
                 for case in item.cases
                 for charge in case.charges
@@ -91,8 +91,8 @@ def no_danger_to_person_offense(
         )
         try:
             years_since_charge_occurred = relativedelta(
-                date.today(), c.arrest_date
-            ).years
+                date.today(), arrest_date
+            ).years  # 0 if arrest date is None.
             charge_occured_within_disqualifying_period = (
                 years_since_charge_occurred < within_years
             )
@@ -135,6 +135,9 @@ def no_danger_to_person_offense(
         except:
             decision.value = True
             decision.reasoning = f"Couldn't read the statute {item.statute}, so its probably not Article B."
+
+    if arrest_date is None:
+        decision.reasoning += " Note: we could not determine the date of the offense, so we assume it happened recently."
 
     return decision
 
@@ -301,6 +304,41 @@ def record_contains_convictions_excluded_from_sealing(crecord: CRecord) -> Decis
     return decision
 
 
+def restitution_paid(case: Case) -> Decision:
+    """
+    2020 amendments to Clean Slate Act provde that only 'restitution' owed on a case prevents sealing.
+
+
+    This method returs a Decision explaining if restituion has been paid.
+    """
+    decision = Decision(
+        name=f"Has restitution been paid on the case {case.docket_number}?",
+        reasoning="",
+    )
+    if case.restitution_remaining is None:
+        decision.value = True
+        decision.reasoning = f"The software could not find restitution. This may mean there is no restitution owed. It may also mean we simply couldn't read the case records."
+
+        return decision
+
+    decision.value = case.restitution_remaining <= 0
+    decision.reasoning = (
+        f"The case's remaining restitution is {case.restitution_remaining}."
+    )
+    return decision
+
+
+def all_restitution_paid(crecord: CRecord) -> Decision:
+    """
+    Explain if all the restitution and costs in a record are paid.
+    """
+    cases = crecord.cases
+    decision = Decision(name="Has all restitution been paid for this record?",)
+    decision.reasoning = [restitution_paid(case) for case in cases]
+    decision.value = all(decision.reasoning)
+    return decision
+
+
 def all_fines_and_costs_paid(crecord: CRecord) -> Decision:
     """
     Explain if all the fines and costs on a list of cases are paid.
@@ -314,7 +352,8 @@ def all_fines_and_costs_paid(crecord: CRecord) -> Decision:
 
 def fines_and_costs_paid(case: Case) -> Decision:
     """
-    In individual is not eligible for sealing a specific case unless all fines and costs have been paid on that case.
+    
+    Old rule: An individual is not eligible for sealing a specific case unless all fines and costs have been paid on that case.
 
     18 Pa. C.S. § 9122.1(a).
 
@@ -671,7 +710,7 @@ def no_firearms_offense(
 
         if bool(decision.value) is False:
             decision.years_to_wait = max(
-                [d.years_to_Wait for d in disqualifying_offenses]
+                [d.years_to_wait for d in disqualifying_offenses]
             )
     return decision
 
@@ -875,13 +914,13 @@ def more_than_x_convictions_y_grade_z_years(
         A decision that is True if `crecord` contains more than the `offense_limit` of `grade_limit` convictions in the last `years` years.
     """
     decision = WaitDecision(
-        name=f"Does {crecord.person.full_name()}'s record contain {offense_limit} or more convictions, graded {grade_limit} or higher, within the last {years} years?"
+        name=f"Does {crecord.person.full_name()}'s record contain {offense_limit} or more convictions, graded {grade_limit} or higher, within the last {within_years} years?"
     )
     disqualifying_charges = []
     for case in crecord.cases:
         for charge in case.charges:
             if (
-                case.years_passed_disposition() >= years
+                case.years_passed_disposition() >= within_years
                 and charge.is_conviction()
                 and Charge.grade_GTE(charge.grade, grade_limit)
             ):
@@ -890,7 +929,7 @@ def more_than_x_convictions_y_grade_z_years(
     decision.reasoning = (
         f"There are {len(disqualifying_charges)} disqualifying charges on the record."
     )
-    decision.value = len(qualifying_charges) >= offense_limit
+    decision.value = len(disqualifying_charges) >= offense_limit
     if bool(decision.value) is True:
         most_recent_charge = min(
             [(c, y) for c, years in disqualifying_charges], lambda c, y: y
@@ -994,9 +1033,9 @@ def no_indecent_exposure(
 
     if decision.value == False:
         most_recent_disqualifying_charge = min(
-            [(c, y) for c, y in disqualifying_charges], lambda c, y: y
+            [(c, y) for c, y in disqualifying_charges], key=lambda t: t[1]
         )
-        years_to_wait = within_years - most_recent_disqualifying_charge
+        years_to_wait = within_years - most_recent_disqualifying_charge[1]
         if years_to_wait > 0:
             decision.years_to_wait = years_to_wait
     else:
@@ -1047,9 +1086,9 @@ def no_sexual_intercourse_w_animal(
 
     if not decision.value:
         most_recent_disqualifying_charge = min(
-            [(c, y) for c, y in disqualifying_charges], lambda c, y: y
+            [(c, y) for c, y in disqualifying_charges], key=lambda t: t[1]
         )
-        years_to_wait = within_years - most_recent_disqualifying_charge
+        years_to_wait = within_years - most_recent_disqualifying_charge[1]
         if years_to_wait > 0:
             decision.years_to_wait = years_to_wait
     else:
@@ -1104,9 +1143,9 @@ def no_failure_to_register(
 
         if not decision.value:
             most_recent_disqualifying_charge = min(
-                [(c, y) for c, y in disqualifying_charges], lambda c, y: y
+                [(c, y) for c, y in disqualifying_charges], key=lambda t: t[1]
             )
-            years_to_wait = within_years - most_recent_disqualifying_charge
+            years_to_wait = within_years - most_recent_disqualifying_charge[1]
             if years_to_wait > 0:
                 decision.years_to_wait = years_to_wait
         else:
@@ -1173,9 +1212,9 @@ def no_weapons_of_escape(
 
     if not decision.value:
         most_recent_disqualifying_charge = min(
-            [(c, y) for c, y in disqualifying_charges], lambda c, y: y
+            [(c, y) for c, y in disqualifying_charges], key=lambda t: t[1]
         )
-        years_to_wait = within_years - most_recent_disqualifying_charge
+        years_to_wait = within_years - most_recent_disqualifying_charge[1]
         if years_to_wait > 0:
             decision.years_to_wait = years_to_wait
     else:
@@ -1220,9 +1259,9 @@ def no_abuse_of_corpse(
 
     if not decision.value:
         most_recent_disqualifying_charge = min(
-            [(c, y) for c, y in disqualifying_charges], lambda c, y: y
+            [(c, y) for c, y in disqualifying_charges], key=lambda t: t[1]
         )
-        years_to_wait = within_years - most_recent_disqualifying_charge
+        years_to_wait = within_years - most_recent_disqualifying_charge[1]
         if years_to_wait > 0:
             decision.years_to_wait = years_to_wait
     else:
@@ -1249,7 +1288,7 @@ def no_paramilitary_training(
 
     18 PA.C.S. 9122.1(b)(2)(iii)(B)(VI)
     """
-    disqualifying_cases = [
+    disqualifying_charges = [
         (charge, case.years_passed_disposition())
         for case in crecord.cases
         for charge in case.charges
@@ -1263,16 +1302,16 @@ def no_paramilitary_training(
 
     decision = WaitDecision(
         name="No paramilitary training offenses in this record.",
-        reasoning=disqualifying_cases,
+        reasoning=disqualifying_charges,
     )
     decision.value = True if len(decision.reasoning) < conviction_limit else False
 
     if not decision.value:
 
         most_recent_disqualifying_charge = min(
-            [(c, y) for c, y in disqualifying_charges], lambda c, y: y
+            [(c, y) for c, y in disqualifying_charges], key=lambda t: t[1]
         )
-        years_to_wait = within_years - most_recent_disqualifying_charge
+        years_to_wait = within_years - most_recent_disqualifying_charge[1]
         if years_to_wait > 0:
             decision.years_to_wait = years_to_wait
     else:

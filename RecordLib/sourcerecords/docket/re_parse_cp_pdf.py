@@ -283,7 +283,6 @@ def parse_disposition_section(
             # and failing to match is not an error, in that case.
             charge_line_search = re.search(charges_pattern, ln)
             if charge_line_search is not None:
-                logger.debug(f"found a charge in line: {ln}")
                 offense = charge_line_search.group("offense").strip()
                 charge_overflow_search = re.search(
                     r"^\s+(?P<offense_overflow>\w+\s*\w*)\s*$",
@@ -387,11 +386,10 @@ def parse_case(txt: str) -> Tuple[Case, List[str]]:
     case.charges = charges
     errs.extend(charge_errs)
 
-    # TODO Bail search.
     costs_search, costs_errs = find_pattern(
         "costs",
         (
-            r"Totals:\s+\$(?P<charged>[\d\,]+\.\d{2})\s+"
+            r"Grand Totals:\s+\$(?P<charged>[\d\,]+\.\d{2})\s+"
             + r"-?\(?\$(?P<paid>[\d\,]+\.\d{2})\)?\s+-?\(?\$"
             + r"(?P<adjusted>[\d\,]+\.\d{2})\)?\s+-?\(?\$([\d\,]+"
             + r"\.\d{2})\)?\s+-?\(?\$(?P<total>[\d\,]+\.\d{2})\)?"
@@ -405,6 +403,25 @@ def parse_case(txt: str) -> Tuple[Case, List[str]]:
             errs.append("Found costs and fines, but could not convert to a number.")
     else:
         errs.extend(costs_errs)
+
+    restitution_search, restitution_errs = find_pattern(
+        "restitution",
+        (
+            r"Restitution Totals:\s+\$(?P<assessed>[\d\,]+\.\d{2})\s+"
+            + r"-?\(?\$(?P<paid>[\d\,]+\.\d{2})\)?\s+-?\(?\$"
+            + r"(?P<adjusted>[\d\,]+\.\d{2})\)?\s+-?\(?\$([\d\,]+"
+            + r"\.\d{2})\)?\s+-?\(?\$(?P<remaining>[\d\,]+\.\d{2})\)?"
+        ),
+        txt,
+    )
+    if restitution_search is not None:
+        case.restitution_assessed = money_or_none(restitution_search.group("assessed"))
+        case.restitution_paid = money_or_none(restitution_search.group("paid"))
+        case.restitution_remaining = money_or_none(
+            restitution_search.group("remaining")
+        )
+    else:
+        errs.extend(restitution_errs)
 
     status_search, status_search_errs = find_pattern(
         "status", r"case status:\s+(?P<status>(?:\w+\s)+)", txt, re.I

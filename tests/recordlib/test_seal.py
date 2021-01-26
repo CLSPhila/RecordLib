@@ -55,6 +55,7 @@ def test_partial_seal(example_crecord):
 
 
 def test_no_danger_to_person_offense(example_crecord):
+    # This is not a danger -to-person offense
     example_crecord.cases[0].charges[0] = Charge(
         offense="Being silly",
         grade="M1",
@@ -66,7 +67,7 @@ def test_no_danger_to_person_offense(example_crecord):
         example_crecord, penalty_limit=7, conviction_limit=1, within_years=20
     )
     assert bool(decision.value) == True
-
+    # this one is a disqualifying offense.
     charge = Charge(
         offense="Being silly",
         grade="M1",
@@ -147,18 +148,20 @@ def test_offenses_punishable_by_two_or_more_years(example_crecord):
         sentences=[],
     )
     example_crecord.cases[0].charges = [c1, c2, c3, c4]
+    # all these charges are punishable by more than two years.
     assert (
         bool(
-            offenses_punishable_by_two_or_more_years(
+            no_offenses_punishable_by_two_or_more_years(
                 example_crecord, conviction_limit=4, within_years=20
             )
         )
         == False
     )
     example_crecord.cases[0].disposition_date = date(1950, 1, 1)
+    # but now the charges are too old to be disqualifying.
     assert (
         bool(
-            offenses_punishable_by_two_or_more_years(
+            no_offenses_punishable_by_two_or_more_years(
                 example_crecord, conviction_limit=4, within_years=20
             )
         )

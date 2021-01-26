@@ -337,7 +337,7 @@ def _base_decisions(decision: Decision) -> List[Decision]:
         assert isinstance(child1, Decision)
         # This decision's reasoning is a list of more decisions.
         return flatten([_base_decisions(d) for d in decision.reasoning])
-    except (AssertionError, IndexError):
+    except (AssertionError, IndexError, AttributeError):
         # This decision is the base decision.
         return [decision]
 
@@ -355,7 +355,7 @@ def fines_and_wait_for_sealing(
     charge_decision: Decision, case_decision: Decision, full_record_decision: Decision
 ) -> Tuple[Optional[Decision], Optional[WaitDecision]]:
     """
-    Takes a Decision about a case and a decision about the full record, and returns the fines decision and a list of any decisions at the base of this
+    Takes a Decision about a case and a decision about the full record, and returns the restitution decision and a list of any decisions at the base of this
         Decision that have (remember, Decisons' `reasoning` might be more Decisions)
         waiting times or fines. 
         
@@ -363,14 +363,14 @@ def fines_and_wait_for_sealing(
         Decisions preventing sealing. 
  
     Args: 
-        case_decision: The first element of the case_decision's reasoning is about whether fines and costs are paid on the case. 
+        case_decision: The first element of the case_decision's reasoning is about whether restitution has been paid on the case. 
         full_record_decision: There are a number of Decisions about whether the person must wait before anything in the record is eligible for sealing.
     """
 
     # Note: for some reason, the decision indicating if a 'case' has disqualifying fines is the first decision in the
     #       reasoning of the _charge_.
     fines_decisions = get_decision_by_name(
-        charge_decision.reasoning, r"Fines and costs are all paid on the case .*"
+        charge_decision.reasoning, r"Has restitution been paid on the case .*"
     )
     try:
         fines_decision = fines_decisions[0]

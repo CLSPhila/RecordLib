@@ -78,6 +78,9 @@ def autosealing_eligibility(
     # has_had_10_years_free_of_m_or_f_convictions = ssr.ten_years_since_last_conviction_for_m_or_f(
     #    crecord
     # )
+
+    # TODO Eventually need to have autosealing use the all_restitution_paid rule, not
+    #     the fines_and_costs one.
     no_outstanding_fines_costs = ssr.all_fines_and_costs_paid(crecord)
     record_not_excluded = ssr.record_contains_no_convictions_excluded_from_sealing(
         crecord
