@@ -391,10 +391,8 @@ def not_felony1(charge: Charge) -> Decision:
     """
     decision = Decision(name="Is the charge an F1 conviction?")
     if charge.grade.strip() == "":
-        decision.value = False
-        decision.reasoning = (
-            "The charge's grade is unknown, so we don't know its *not* an F1."
-        )
+        decision.value = True
+        decision.reasoning = "The charge's grade is unknown. We are assuming it is not an F1, but could be wrong."
     elif re.match("F1", charge.grade):
         if charge.is_conviction():
             decision.value = False
@@ -953,6 +951,9 @@ def no_offenses_punishable_by_two_or_more_years(
     No sealing a record if it has two or more offenses punishable by more than two years in prison within
     15 years.. 18 PaCS 9122.1(b)(2)(iii)(A)
 
+    For both of these rules, we judge the length of punishable time by the grade of the charge as a kind of proxy
+    for the possible term of punishment.
+
     The Expungement Generator uses the charge grade as a proxy for this. See Charge.php:284.
 
     So will RecordLib.
@@ -963,7 +964,7 @@ def no_offenses_punishable_by_two_or_more_years(
 
     """
     # Grades that approximately the grades of offenses that also have penalty's of two or more years.
-    proxy_grades = ["F1", "F2", "F3", "F", "M1", "M2"]
+    proxy_grades = ["F1", "F2", "F3", "F", "M1"]
     convictions_within_timelimit = [
         (charge, case.years_passed_disposition())
         for case in crecord.cases
@@ -987,7 +988,7 @@ def no_offenses_punishable_by_two_or_more_years(
             [years_passed for charge, years_passed in convictions_within_timelimit]
         )
         years_left = within_years - years_since_last_conviction
-        decision.reasoning = f"There were {len(convictions_within_timelimit)} convictions graded M2 or greater within the previous {within_years} years. It looks like there are {years_left} years before the charge may be eligible for sealing."
+        decision.reasoning = f"There were {len(convictions_within_timelimit)} convictions graded M1 or greater within the previous {within_years} years. It looks like there are {years_left} years before the charge may be eligible for sealing."
         decision.years_to_wait = years_left
     return decision
 
