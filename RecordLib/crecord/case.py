@@ -120,6 +120,10 @@ class Case:
         else:
             self.related_cases = related_cases
 
+    def is_active(self) -> bool:
+        """ Is this case still active? """
+        return re.match("active", self.status, re.I)
+
     def years_passed_disposition(self) -> int:
         """ The number of years that have passed since the disposition date of this case."""
         try:
