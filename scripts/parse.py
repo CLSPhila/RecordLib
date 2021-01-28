@@ -115,6 +115,7 @@ def docket_number(docket_number, doctype, loglevel, save_docket, save_parsed):
     handler.setLevel(loglevel)
     root_logger.addHandler(handler)
     root_logger.info("Logging is working")
+    breakpoint()
     results, _ = searchujs.search_by_docket(docket_number)
     assert len(results) == 1, "Request for docket failed."
     if doctype == "summary":
@@ -123,7 +124,7 @@ def docket_number(docket_number, doctype, loglevel, save_docket, save_parsed):
         url = results[0]["docket_sheet_url"]
     pdf = io.BytesIO(download_file(url))
     if save_docket:
-        with open(save, "wb") as f:
+        with open(save_docket, "wb") as f:
             f.write(pdf)
 
     parser = pick_pdf_parser(docket_number)

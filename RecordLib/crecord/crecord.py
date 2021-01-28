@@ -178,6 +178,7 @@ class CRecord:
                 if charge.disposition and (
                     re.search("held for court", charge.disposition or "", re.I)
                     or re.search("waived for court", charge.disposition or "", re.I)
+                    or re.search("proceed to court", charge.disposition or "", re.I)
                 ):
                     # try to find another charge that matches this one, using the OTN.
                     other_cases = self.find_case_by_otn(
