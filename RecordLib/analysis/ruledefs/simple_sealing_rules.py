@@ -939,14 +939,11 @@ def more_than_x_convictions_y_grade_z_years(
     return decision
 
 
-def no_offenses_punishable_by_two_or_more_years(
+def no_offenses_punishable_by_more_than_two_years(
     crecord: CRecord, conviction_limit: int, within_years: int
 ) -> WaitDecision:
     """
     Not too many convictions for offenses punishable by two or more years.
-    
-    No sealing a record if it has four or more offenses punishable by two or more years within 20 years. 
-    18 PaCS 9122.1(b)(2)(ii)(B)
     
     No sealing a record if it has two or more offenses punishable by more than two years in prison within
     15 years.. 18 PaCS 9122.1(b)(2)(iii)(A)
@@ -963,7 +960,7 @@ def no_offenses_punishable_by_two_or_more_years(
         two years in `crecord`.
 
     """
-    # Grades that approximately the grades of offenses that also have penalty's of two or more years.
+    # Grades that approximately the grades of offenses that also have penalty's of more than two years.
     proxy_grades = ["F1", "F2", "F3", "F", "M1"]
     convictions_within_timelimit = [
         (charge, case.years_passed_disposition())
@@ -989,6 +986,57 @@ def no_offenses_punishable_by_two_or_more_years(
         )
         years_left = within_years - years_since_last_conviction
         decision.reasoning = f"There were {len(convictions_within_timelimit)} convictions graded M1 or greater within the previous {within_years} years. It looks like there are {years_left} years before the charge may be eligible for sealing."
+        decision.years_to_wait = years_left
+    return decision
+
+
+def no_offenses_punishable_by_two_or_more_years(
+    crecord: CRecord, conviction_limit: int, within_years: int
+) -> WaitDecision:
+    """
+    Not too many convictions for offenses punishable by two or more years.
+    
+    No sealing a record if it has four or more offenses punishable by two or more years within 20 years. 
+    18 PaCS 9122.1(b)(2)(ii)(B)
+
+    For both of these rules, we judge the length of punishable time by the grade of the charge as a kind of proxy
+    for the possible term of punishment.
+
+    The Expungement Generator uses the charge grade as a proxy for this. See Charge.php:284.
+
+    So will RecordLib.
+
+    Returns:
+        A Decision we'll call `d`. `bool(d)` is True if there were no more than offenses punishable by more than 
+        two years in `crecord`.
+
+    """
+    # Grades that approximately the grades of offenses that also have penalty's of two or more years.
+    proxy_grades = ["F1", "F2", "F3", "F", "M1", "M2"]
+    convictions_within_timelimit = [
+        (charge, case.years_passed_disposition())
+        for case in crecord.cases
+        for charge in case.charges
+        if (
+            charge.is_conviction()
+            and (charge.grade in proxy_grades)
+            and case.years_passed_disposition() < within_years
+        )
+    ]
+
+    decision = WaitDecision(
+        name=f"The record has fewer than {conviction_limit} convictions for offenses punishable by two or more years in the last {within_years} years.",
+        value=len(convictions_within_timelimit) < conviction_limit,
+    )
+
+    if bool(decision.value):
+        decision.reasoning = f"There were only {len(convictions_within_timelimit)} convictions within {within_years}."
+    else:
+        years_since_last_conviction = max(
+            [years_passed for charge, years_passed in convictions_within_timelimit]
+        )
+        years_left = within_years - years_since_last_conviction
+        decision.reasoning = f"There were {len(convictions_within_timelimit)} convictions graded M2 or greater within the previous {within_years} years. It looks like there are {years_left} years before the charge may be eligible for sealing."
         decision.years_to_wait = years_left
     return decision
 
@@ -1346,7 +1394,7 @@ def full_record_requirements_for_petition_sealing(crecord: CRecord) -> Decision:
         no_offenses_punishable_by_two_or_more_years(
             crecord, conviction_limit=4, within_years=20
         ),
-        no_offenses_punishable_by_two_or_more_years(
+        no_offenses_punishable_by_more_than_two_years(
             crecord, conviction_limit=2, within_years=15
         ),
         no_indecent_exposure(crecord, conviction_limit=1, within_years=15),
