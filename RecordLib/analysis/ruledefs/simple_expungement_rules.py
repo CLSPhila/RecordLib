@@ -62,6 +62,48 @@ def is_summary(charge: Charge) -> Decision:
     )
 
 
+def is_unresolved(charge: Charge) -> Decision:
+    """
+    True decision if a charge seems not to be resolved.
+
+    NB - in the future, may want to consider adding the Case to the method signature. 
+    """
+    decision = Decision(
+        name=f"Is charge {charge.sequence}, for {charge.offense}, still unresolved?",
+    )
+
+    if charge.disposition == "" or charge.disposition is None:
+        decision.value = True
+        decision.reasoning = (
+            "The charge has no disposition, so it appears to be unresolved."
+        )
+    else:
+        decision.value = False
+        decision.reasoning = (
+            f"The charge was resolved with the disposition, '{charge.disposition}'."
+        )
+    return decision
+
+
+def is_conviction_or_unresolved(charge: Charge) -> Decision:
+    """
+    A true decision if the charge is a conviction or the case is unresolved 
+
+    False otherwise.
+    
+    This decision is useful for example in evaluating expungements. 
+
+    A charge cannot be expunged if EITHER its a conviction or if its unresolved.
+
+    """
+    decision = Decision(
+        name=f"Is charge {charge.sequence}, for {charge.offense}, either a conviction or still unresolved?",
+        reasoning=[is_unresolved(charge), is_conviction(charge),],
+    )
+    decision.value = any(decision.reasoning)
+    return decision
+
+
 def is_conviction(charge: Charge) -> Decision:
 
     if charge.disposition is None or charge.disposition.strip() == "":

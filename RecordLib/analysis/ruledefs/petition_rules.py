@@ -188,10 +188,10 @@ def expunge_nonconvictions(crecord: CRecord) -> Tuple[CRecord, PetitionDecision]
         unexpungeable_case = case.partialcopy()
         expungeable_case = case.partialcopy()
         for charge in case.charges:
-            charge_d = ser.is_conviction(charge)
+            charge_d = ser.is_conviction_or_unresolved(charge)
 
             if bool(charge_d) is False and charge_d.value is not None:
-                # if the charge_d's value is False, then the charge is _not_ a conviction, and hence
+                # if the charge_d's value is False, then the charge is _not_ a conviction, and its not unresolved. Hence
                 # _is_ expungeable here.
                 expungeable_case.charges.append(charge)
             else:

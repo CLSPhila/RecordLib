@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List, Optional
 import logging
+import re
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from RecordLib.crecord import Charge
@@ -119,10 +120,6 @@ class Case:
             self.related_cases = []
         else:
             self.related_cases = related_cases
-
-    def is_active(self) -> bool:
-        """ Is this case still active? """
-        return re.match("active", self.status, re.I)
 
     def years_passed_disposition(self) -> int:
         """ The number of years that have passed since the disposition date of this case."""

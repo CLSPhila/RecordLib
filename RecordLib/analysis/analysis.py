@@ -98,7 +98,7 @@ def summarize(analysis: Analysis) -> dict:
                 "grade": charge.grade,
                 "disposition": charge.disposition
                 if charge.disposition is not None
-                else "We could not find the disposition. We are assuming this wasn't a conviction, but could be wrong. A lawyer would be able to help figure this out.",
+                else "We could not find the disposition. This may mean the case is still open, or be some other kind of error. A lawyer would be able to help figure this out.",
                 "disposition_date": charge.disposition_date or case.disposition_date,
                 "next_steps": "",
             }
