@@ -17,7 +17,7 @@ from RecordLib.sourcerecords.summary.parse_pdf import parse_pdf as parse_summary
 requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += "HIGH:!DH:!aNULL"
 
 
-def pick_pdf_parser(docket_num, doctype="docket"):
+def pick_pdf_parser(docket_num, logger, doctype="docket"):
     """
     Choose the appropriate parser function to use, based on a docket number.
     
@@ -67,15 +67,15 @@ def pdf(path, doctype, court, loglevel):
     root_logger.addHandler(handler)
     root_logger.info("Logging is working")
     if doctype == "summary":
-        d, errs = parse_summary_pdf
+        dkt, errs = parse_summary_pdf
     elif doctype == "docket":
-        d, errs = Docket.from_pdf(path, court=court)
+        dkt, errs = Docket.from_pdf(path)
         click.echo("---Errors---")
         click.echo(errs)
         click.echo("---Person---")
-        click.echo(json.dumps(d._defendant, default=to_serializable, indent=4))
+        click.echo(json.dumps(dkt._defendant, default=to_serializable, indent=4))
         click.echo("---Case---")
-        click.echo(json.dumps(d._case, default=to_serializable, indent=4))
+        click.echo(json.dumps(dkt._case, default=to_serializable, indent=4))
     click.echo("Done.")
 
 
@@ -127,7 +127,7 @@ def docket_number(docket_number, doctype, loglevel, save_docket, save_parsed):
         with open(save_docket, "wb") as f:
             f.write(pdf)
 
-    parser = pick_pdf_parser(docket_number)
+    parser = pick_pdf_parser(docket_number, root_logger)
     parsed = parser(pdf)
     person = parsed[0]
     cases = parsed[1]
