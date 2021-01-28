@@ -115,7 +115,6 @@ def docket_number(docket_number, doctype, loglevel, save_docket, save_parsed):
     handler.setLevel(loglevel)
     root_logger.addHandler(handler)
     root_logger.info("Logging is working")
-    breakpoint()
     results, _ = searchujs.search_by_docket(docket_number)
     assert len(results) == 1, "Request for docket failed."
     if doctype == "summary":

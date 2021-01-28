@@ -33,8 +33,11 @@ class PATTERNS:
     alias_names_start = re.compile(r"Alias Name", re.I)
     alias_names_end = re.compile(r"CASE PARTICIPANTS", re.I)
     end_of_page = re.compile(r"(CPCMS|AOPC)\s\d{4}", re.I)
+    # NB - 1/2020. Made the disposition at the end of the charges line an optional
+    # noncapturing group, to capture if there's no dispo in a charge. I don't know if this will
+    # lead to false matches elseqhere, though.
     charges = re.compile(
-        r"^\s*(?P<sequence_num>\d)\s+((\w|\d|\s(?!\s)|\-|\u00A7|\*)+)\s{2,}(\w{0,2})\s{2,}([\d|\D]+)\s{2,}(\d{1,2}\/\d{1,2}\/\d{4})\s{2,}(\D{2,})",
+        r"^\s*(?P<sequence_num>\d)\s+((\w|\d|\s(?!\s)|\-|\u00A7|\*)+)\s{2,}(\w{0,2})\s{2,}([\d|\D]+)\s{2,}(\d{1,2}\/\d{1,2}\/\d{4})(?:\s{2,}(\D{2,}))?",
         re.U,
     )
     charges_search_overflow = re.compile(r"^\s+(\w+\s*\w*)\s*$", re.I)
@@ -66,7 +69,6 @@ def parse_mdj_pdf_text(txt: str) -> Tuple[Person, List[Case], List[str]]:
     case_info["charges"] = []
     person_info = dict()
     person_info["aliases"] = []
-
     lines = txt.split("\n")
     for idx, line in enumerate(lines):
         m = PATTERNS.mdj_district_number.search(line)
